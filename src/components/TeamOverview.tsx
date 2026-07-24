@@ -85,8 +85,17 @@ export function TeamOverview({ team }: { team: Team }) {
           {team.weibo ? (
             <FollowButton label="Weibo" url={team.weibo} accent={teamColor} />
           ) : null}
+          {team.instagram ? (
+            <FollowButton label="Instagram" url={team.instagram} accent={teamColor} />
+          ) : null}
           {team.youtubeChannel ? (
             <FollowButton label="YouTube" url={team.youtubeChannel} accent={teamColor} />
+          ) : null}
+          {team.twitch ? (
+            <FollowButton label="Twitch" url={team.twitch} accent={teamColor} />
+          ) : null}
+          {team.bilibili ? (
+            <FollowButton label="Bilibili" url={team.bilibili} accent={teamColor} />
           ) : null}
         </View>
       </Section>

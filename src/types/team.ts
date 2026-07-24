@@ -27,9 +27,12 @@ export interface Team {
   colors: TeamColors;
   logoUrl: string;
   twitter: string;
-  /** LPL teams only — Weibo profile URL. Empty string elsewhere. */
+  /** Not every team has every platform — all of these are optional. */
   weibo?: string;
+  instagram?: string;
   youtubeChannel: string;
+  twitch?: string;
+  bilibili?: string;
   active: boolean;
   roster: {
     lastVerified: string;
@@ -43,7 +46,13 @@ export interface RegionInfo {
   leaguepediaPage: string;
   logoUrl: string;
   twitter: string;
+  /** Not every region has every platform — all of these are optional. */
+  weibo?: string;
+  instagram?: string;
+  discord?: string;
   youtube: string;
+  twitch?: string;
+  bilibili?: string;
   teamIds: string[];
 }
 

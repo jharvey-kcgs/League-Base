@@ -10,7 +10,7 @@ const FAQS: Array<{ q: string; a: string }> = [
   },
   {
     q: "Why isn't my team showing up in its region?",
-    a: 'A couple of LPL teams get relegated out of the active split roster (12 of 14 teams compete in Split 3). Relegated teams still exist in the app but are marked inactive until they\u2019re re-invited.',
+    a: 'A couple of LPL teams get relegated out of the active split roster (12 of 14 teams compete in Split 3). Relegated teams are hidden from region browsing and the favorite-team picker until they\u2019re re-invited \u2014 they\u2019re not deleted, just not selectable while inactive.',
   },
   {
     q: 'How do I change my favorite team?',

@@ -18,7 +18,8 @@ export function RegionHomeScreen({ navigation, region }: Props) {
   const info = getRegionInfo(region);
   const teams = getTeamIdsForRegion(region)
     .map((id) => ({ id, team: getTeam(id) }))
-    .filter((t): t is { id: string; team: NonNullable<typeof t.team> } => Boolean(t.team));
+    .filter((t): t is { id: string; team: NonNullable<typeof t.team> } => Boolean(t.team))
+    .filter((t) => t.team.active);
 
   return (
     <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
@@ -27,8 +28,23 @@ export function RegionHomeScreen({ navigation, region }: Props) {
           {info.twitter ? (
             <FollowButton label="Twitter/X" url={info.twitter} accent={colors.accent} />
           ) : null}
+          {info.weibo ? (
+            <FollowButton label="Weibo" url={info.weibo} accent={colors.accent} />
+          ) : null}
+          {info.instagram ? (
+            <FollowButton label="Instagram" url={info.instagram} accent={colors.accent} />
+          ) : null}
+          {info.discord ? (
+            <FollowButton label="Discord" url={info.discord} accent={colors.accent} />
+          ) : null}
           {info.youtube ? (
             <FollowButton label="YouTube" url={info.youtube} accent={colors.accent} />
+          ) : null}
+          {info.twitch ? (
+            <FollowButton label="Twitch" url={info.twitch} accent={colors.accent} />
+          ) : null}
+          {info.bilibili ? (
+            <FollowButton label="Bilibili" url={info.bilibili} accent={colors.accent} />
           ) : null}
         </View>
       </Section>

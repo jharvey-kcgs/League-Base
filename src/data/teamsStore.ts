@@ -31,8 +31,10 @@ export function getAllTeams(): Array<{ id: string; team: Team }> {
 }
 
 /** Teams grouped by region, in the order defined in teams.json. Inactive
- * teams (e.g. relegated LPL clubs) are included — screens decide whether to
- * gray them out or hide them. */
+ * teams (e.g. relegated LPL clubs) are excluded — this feeds the
+ * favorite-team picker (Onboarding, Settings > Profile), which shouldn't
+ * offer a team that isn't currently competing. RegionHomeScreen filters
+ * its own team grid the same way, separately. */
 export function getTeamsGroupedByRegion(): Array<{
   region: Region;
   displayName: string;
@@ -43,7 +45,7 @@ export function getTeamsGroupedByRegion(): Array<{
     displayName: getRegionDisplayName(region),
     teams: getTeamIdsForRegion(region)
       .map((id) => ({ id, team: data.teams[id] }))
-      .filter((t) => t.team),
+      .filter((t) => t.team && t.team.active),
   }));
 }
 
