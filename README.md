@@ -142,6 +142,12 @@ src/
     AppText.tsx                     Drop-in replacement for RN's <Text> —
                                      applies the header font where relevant.
                                      Every screen imports Text from here.
+    AppHeader.tsx                    Cog / title / hamburger — shared by
+                                      HomeScreen and RegionHomeScreen.
+                                      Custom-built (not React Navigation's
+                                      native header) so it isn't subject to
+                                      OS-drawn pill/circle chrome around
+                                      headerLeft/headerRight
     TeamOverview.tsx                 The full team-detail view (banner,
                                      record/matches/roster/coaches/socials)
                                      — shared by HomeScreen and TeamScreen
@@ -349,6 +355,27 @@ Fix: `npx expo install react-native-worklets`, then make sure
 `babel.config.js` points at `'react-native-worklets/plugin'` (not the old
 `'react-native-reanimated/plugin'`), then `npx expo start --clear` — Babel
 config changes don't take effect on a plain reload.
+
+### Gotcha #8: React Navigation's native headerLeft/headerRight get OS-drawn chrome you can't control
+
+Custom buttons passed to `screenOptions.headerLeft`/`headerRight` on a
+native-stack screen get wrapped in whatever background the current OS
+applies to header items (a pill shape around the back button, a circle
+around custom buttons, on current iOS) — and that chrome doesn't
+necessarily center itself around custom content correctly. If a
+header icon looks slightly off-center no matter how precisely its own
+`View`/`Pressable` is centered, this is almost certainly why. Fix used
+here: don't fight it — build the header as a plain custom `View` instead
+(see `AppHeader.tsx`) and set `headerShown: false` on that screen, same
+as `HomeScreen` already did before this ever came up on `RegionHomeScreen`.
+
+Related: a Stack.Screen that wraps a Drawer (like `MainDrawer` wrapping
+`RootDrawer`) only has ONE title in its own parent Stack, regardless of
+which Drawer tab is actually focused — so a screen pushed on top (like
+Settings) will show the same back-button label no matter which tab you
+opened it from, unless that title is computed dynamically from the
+focused route (`getFocusedRouteNameFromRoute`, see `App.tsx`) rather than
+hardcoded.
 
 ---
 

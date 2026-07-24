@@ -1,10 +1,10 @@
 import React from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
 import { getTeam } from '../data/teamsStore';
 import { useTheme } from '../theme/ThemeContext';
 import { AppText } from '../components/AppText';
+import { AppHeader } from '../components/AppHeader';
 import { TeamOverview } from '../components/TeamOverview';
 import type { HomeScreenProps } from '../navigation/types';
 
@@ -14,8 +14,8 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
-      <HomeHeader
-        colors={colors}
+      <AppHeader
+        title="League Base"
         onOpenSettings={() => navigation.navigate('Settings')}
         onOpenRegions={() => navigation.openDrawer()}
       />
@@ -32,42 +32,7 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
   );
 }
 
-function HomeHeader({
-  colors,
-  onOpenSettings,
-  onOpenRegions,
-}: {
-  colors: ReturnType<typeof useTheme>['colors'];
-  onOpenSettings: () => void;
-  onOpenRegions: () => void;
-}) {
-  return (
-    <View style={[styles.header, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
-      <Pressable onPress={onOpenSettings} hitSlop={12} style={styles.headerButton}>
-        <Ionicons name="settings-outline" size={24} color={colors.text} />
-      </Pressable>
-      <AppText weight="heavy" style={[styles.headerTitle, { color: colors.accent }]}>
-        LEAGUE BASE
-      </AppText>
-      <Pressable onPress={onOpenRegions} hitSlop={12} style={styles.headerButton}>
-        <Ionicons name="menu" size={26} color={colors.text} />
-      </Pressable>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   container: { flex: 1 },
   center: { alignItems: 'center', justifyContent: 'center' },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  headerButton: { width: 32, alignItems: 'center' },
-  headerTitle: { fontSize: 20, letterSpacing: 1.5 },
 });

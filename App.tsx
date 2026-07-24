@@ -5,7 +5,7 @@ import 'react-native-gesture-handler';
 
 import React from 'react';
 import { ActivityIndicator, View } from 'react-native';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, getFocusedRouteNameFromRoute } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ThemeProvider, useTheme } from './src/theme/ThemeContext';
@@ -19,6 +19,17 @@ import { AboutScreen } from './src/screens/AboutScreen';
 import { FAQScreen } from './src/screens/FAQScreen';
 import { DataSettingsScreen } from './src/screens/DataSettingsScreen';
 import type { RootStackParamList } from './src/navigation/types';
+
+// Drawer route name -> human-readable label, for the back-button title on
+// whatever gets pushed on top (Settings). Region tabs use their own name
+// as-is (LCS/LEC/LCK/LPL); only MyTeam needs an actual translation.
+const DRAWER_TAB_LABELS: Record<string, string> = {
+  MyTeam: 'My Team',
+  LCS: 'LCS',
+  LEC: 'LEC',
+  LCK: 'LCK',
+  LPL: 'LPL',
+};
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -49,11 +60,18 @@ function RootNavigator() {
         ) : (
           // title here isn't shown (headerShown: false), but it's what the
           // *next* screen's back button falls back to when nothing else is
-          // set — without it, Settings' back button reads "MainDrawer".
+          // set. Computed from whichever drawer tab is actually focused
+          // (getFocusedRouteNameFromRoute is React Navigation's documented
+          // pattern for this) — without it, Settings' back button always
+          // read "My Team" even when opened from an LCS/LEC/LCK/LPL screen,
+          // since MainDrawer itself doesn't know which of its tabs is active.
           <Stack.Screen
             name="MainDrawer"
             component={RootDrawer}
-            options={{ headerShown: false, title: 'My Team' }}
+            options={({ route }) => ({
+              headerShown: false,
+              title: DRAWER_TAB_LABELS[getFocusedRouteNameFromRoute(route) ?? 'MyTeam'] ?? 'My Team',
+            })}
           />
         )}
         <Stack.Screen name="Settings" component={SettingsScreen} options={{ title: 'Settings' }} />
