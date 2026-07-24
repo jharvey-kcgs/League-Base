@@ -40,7 +40,7 @@ export function TeamUpcomingMatches({ status, events, teamCode }: Props) {
   return (
     <View style={styles.list}>
       {upcoming.map((event) => (
-        <MatchRow key={event.match.id} event={event} teamCode={teamCode} />
+        <MatchRow key={event.match?.id ?? event.startTime} event={event} teamCode={teamCode} />
       ))}
     </View>
   );
@@ -48,7 +48,7 @@ export function TeamUpcomingMatches({ status, events, teamCode }: Props) {
 
 function MatchRow({ event, teamCode }: { event: ScheduleEvent; teamCode: string }) {
   const { colors } = useTheme();
-  const opponent = event.match.teams.find((t) => t.code !== teamCode);
+  const opponent = (event.match?.teams ?? []).find((t) => !!t && t.code !== teamCode);
   const isLive = event.state === 'inProgress';
 
   return (

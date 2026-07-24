@@ -39,7 +39,7 @@ export function RecentGames({ status, events }: Props) {
   return (
     <View style={styles.list}>
       {recent.map((event) => (
-        <MatchRow key={event.match.id} event={event} />
+        <MatchRow key={event.match?.id ?? event.startTime} event={event} />
       ))}
     </View>
   );
@@ -47,7 +47,7 @@ export function RecentGames({ status, events }: Props) {
 
 function MatchRow({ event }: { event: ScheduleEvent }) {
   const { colors } = useTheme();
-  const [teamA, teamB] = event.match.teams;
+  const [teamA, teamB] = event.match?.teams ?? [];
   const scoreA = teamA?.result?.gameWins ?? 0;
   const scoreB = teamB?.result?.gameWins ?? 0;
 

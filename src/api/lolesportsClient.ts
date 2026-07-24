@@ -55,7 +55,13 @@ export interface ScheduleEvent {
   state: MatchState;
   blockName?: string;
   league: { id: string; slug: string; name: string };
-  match: {
+  // Optional — confirmed via a real crash (LCS's Split 3, first day) that
+  // unscheduled/TBD placeholder events can omit this entirely, not just
+  // fields within it. fetchSchedule() filters these out at the source, but
+  // the type stays honest so any future unguarded access (event.match.x
+  // instead of event.match?.x) is a compile error, not a repeat of that
+  // crash.
+  match?: {
     id: string;
     teams: ScheduleTeam[];
     strategy?: { type: string; count: number };
@@ -91,7 +97,15 @@ export async function fetchSchedule(leagueId: string): Promise<ScheduleEvent[]> 
   const data = await apiGet<{ data: { schedule: { events: ScheduleEvent[] } } }>('getSchedule', {
     leagueId,
   });
-  return data.data.schedule.events ?? [];
+  const events = data.data.schedule.events ?? [];
+  // Some events — unscheduled/TBD placeholders, confirmed on LCS's brand-new
+  // Split 3 — come back with no `match` object at all, not just missing
+  // fields inside one. Every consumer of this function (UpcomingGames,
+  // RecentGames, computeRecord, fetchScheduleForTeam, etc.) assumes
+  // event.match exists, so filtering these out here — once, at the source —
+  // protects all of them instead of needing the same guard repeated in
+  // every single component.
+  return events.filter((e) => e.match && Array.isArray(e.match.teams));
 }
 
 /** Convenience wrapper: schedule events for a region, resolving the league
@@ -125,11 +139,25 @@ export async function fetchLive(): Promise<ScheduleEvent[]> {
 export async function fetchScheduleForTeam(regionSlug: string, teamCode: string): Promise<ScheduleEvent[]> {
   const leagueId = await resolveLeagueId(regionSlug);
   if (!leagueId) return [];
-  const [allEvents, tournaments] = await Promise.all([
-    fetchSchedule(leagueId),
-    fetchTournamentsForLeague(leagueId),
-  ]);
-  const teamEvents = allEvents.filter((e) => e.match.teams.some((t) => t.code === teamCode));
+
+  // The schedule itself is essential — if this fails, there's genuinely
+  // nothing to show, so let it throw and surface as a real error.
+  const allEvents = await fetchSchedule(leagueId);
+  const teamEvents = allEvents.filter((e) => e.match?.teams?.some((t) => t?.code === teamCode));
+
+  // Scoping to the current split is best-effort, not essential — if
+  // tournament resolution fails for any reason, the team's full (unscoped)
+  // schedule is a better fallback than a hard error over something
+  // secondary. This was actually happening for LCS specifically: since
+  // RegionHomeScreen's Upcoming/Recent Games never call
+  // fetchTournamentsForLeague (only Standings does), only the team-page
+  // path — which bundled both calls together — was breaking.
+  let tournaments: Tournament[];
+  try {
+    tournaments = await fetchTournamentsForLeague(leagueId);
+  } catch {
+    return teamEvents;
+  }
 
   const current = pickCurrentTournament(tournaments);
   if (!current) return teamEvents; // can't scope without a resolved tournament — better than showing nothing
@@ -155,7 +183,7 @@ export function computeRecord(events: ScheduleEvent[], teamCode: string): TeamRe
   let losses = 0;
   for (const event of events) {
     if (event.state !== 'completed') continue;
-    const team = event.match.teams.find((t) => t.code === teamCode);
+    const team = event.match?.teams?.find((t) => t?.code === teamCode);
     if (team?.result?.outcome === 'win') wins++;
     if (team?.result?.outcome === 'loss') losses++;
   }
@@ -248,7 +276,14 @@ export async function fetchStandings(tournamentId: string): Promise<StandingsGro
   return sections.map((section) => {
     const rows: StandingsRow[] = [];
     for (const rank of section.rankings ?? []) {
-      for (const team of rank.teams) {
+      for (const team of rank.teams ?? []) {
+        // A brand-new split (LCS's Split 3, which just started, is exactly
+        // this case) can have unseeded ranking slots — no team assigned
+        // yet — represented as a null/undefined entry rather than an
+        // omitted one. Without this guard, team.id below throws
+        // "Cannot read property 'id' of undefined" the moment any region
+        // has even one such slot, which is what was actually happening.
+        if (!team) continue;
         rows.push({
           ordinal: rank.ordinal,
           id: team.id,

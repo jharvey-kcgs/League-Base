@@ -40,7 +40,7 @@ export function TeamRecentMatches({ status, events, teamCode }: Props) {
   return (
     <View style={styles.list}>
       {recent.map((event) => (
-        <MatchRow key={event.match.id} event={event} teamCode={teamCode} />
+        <MatchRow key={event.match?.id ?? event.startTime} event={event} teamCode={teamCode} />
       ))}
     </View>
   );
@@ -48,8 +48,9 @@ export function TeamRecentMatches({ status, events, teamCode }: Props) {
 
 function MatchRow({ event, teamCode }: { event: ScheduleEvent; teamCode: string }) {
   const { colors } = useTheme();
-  const self = event.match.teams.find((t) => t.code === teamCode);
-  const opponent = event.match.teams.find((t) => t.code !== teamCode);
+  const teams = event.match?.teams ?? [];
+  const self = teams.find((t) => t?.code === teamCode);
+  const opponent = teams.find((t) => !!t && t.code !== teamCode);
   const outcome = self?.result?.outcome;
   const score = `${self?.result?.gameWins ?? 0}-${opponent?.result?.gameWins ?? 0}`;
   const resultLabel = `${outcome === 'win' ? 'W' : outcome === 'loss' ? 'L' : '\u2014'} ${score}`;
