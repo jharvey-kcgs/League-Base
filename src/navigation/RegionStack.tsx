@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable } from 'react-native';
+import { Pressable, StyleSheet } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { DrawerActions } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -23,7 +23,7 @@ export function createRegionStack(region: Region) {
         screenOptions={{
           headerStyle: { backgroundColor: colors.surface },
           headerTintColor: colors.text,
-          headerTitleStyle: { ...headerTitleStyle, color: colors.text },
+          headerTitleStyle: { ...headerTitleStyle, color: colors.accent },
           headerShadowVisible: false,
           contentStyle: { backgroundColor: colors.background },
         }}
@@ -35,10 +35,14 @@ export function createRegionStack(region: Region) {
           // way back to the drawer at all. DrawerActions.openDrawer()
           // bubbles up to the nearest Drawer navigator automatically, so
           // this works without needing a composite navigation prop type.
-          headerLeft: () => (
+          // On the right, matching MyTeam's hamburger placement — left is
+          // intentionally empty here (MyTeam has Settings' cog there, but
+          // RegionHome has no equivalent).
+          headerRight: () => (
             <Pressable
               onPress={() => navigation.dispatch(DrawerActions.openDrawer())}
               hitSlop={12}
+              style={styles.headerButton}
             >
               <Ionicons name="menu" size={24} color={colors.text} />
             </Pressable>
@@ -51,3 +55,10 @@ export function createRegionStack(region: Region) {
     );
   };
 }
+
+const styles = StyleSheet.create({
+  // Fixed square hit target with the icon centered inside, rather than
+  // letting the Pressable size to the icon's own (slightly off-center)
+  // glyph bounds.
+  headerButton: { width: 32, height: 32, alignItems: 'center', justifyContent: 'center' },
+});

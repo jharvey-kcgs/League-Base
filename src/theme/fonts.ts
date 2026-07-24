@@ -45,6 +45,7 @@ export const FONT_FAMILY: Record<'regular' | 'medium' | 'bold' | 'heavy', string
  * itself, not through <AppText> — so it needs this applied explicitly in
  * every navigator's screenOptions.headerTitleStyle, or it silently falls
  * back to the plain system font regardless of what AppText does elsewhere. */
-export const headerTitleStyle = FONT_FAMILY.bold
-  ? { fontFamily: FONT_FAMILY.bold }
-  : { fontWeight: '700' as const };
+export const headerTitleStyle = {
+  ...(FONT_FAMILY.bold ? { fontFamily: FONT_FAMILY.bold } : { fontWeight: '700' as const }),
+  fontSize: 20,
+};

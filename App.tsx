@@ -39,7 +39,7 @@ function RootNavigator() {
         screenOptions={{
           headerStyle: { backgroundColor: colors.surface },
           headerTintColor: colors.text,
-          headerTitleStyle: { ...headerTitleStyle, color: colors.text },
+          headerTitleStyle: { ...headerTitleStyle, color: colors.accent },
           headerShadowVisible: false,
           contentStyle: { backgroundColor: colors.background },
         }}
@@ -47,7 +47,14 @@ function RootNavigator() {
         {!favoriteTeamId ? (
           <Stack.Screen name="Onboarding" component={OnboardingScreen} options={{ headerShown: false }} />
         ) : (
-          <Stack.Screen name="MainDrawer" component={RootDrawer} options={{ headerShown: false }} />
+          // title here isn't shown (headerShown: false), but it's what the
+          // *next* screen's back button falls back to when nothing else is
+          // set — without it, Settings' back button reads "MainDrawer".
+          <Stack.Screen
+            name="MainDrawer"
+            component={RootDrawer}
+            options={{ headerShown: false, title: 'My Team' }}
+          />
         )}
         <Stack.Screen name="Settings" component={SettingsScreen} options={{ title: 'Settings' }} />
         <Stack.Screen

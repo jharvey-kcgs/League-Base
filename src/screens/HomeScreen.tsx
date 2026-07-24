@@ -69,5 +69,5 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   headerButton: { width: 32, alignItems: 'center' },
-  headerTitle: { fontSize: 16, letterSpacing: 1.5 },
+  headerTitle: { fontSize: 20, letterSpacing: 1.5 },
 });
