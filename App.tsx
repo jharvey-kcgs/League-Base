@@ -9,7 +9,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ThemeProvider, useTheme } from './src/theme/ThemeContext';
-import { useAppFonts } from './src/theme/fonts';
+import { useAppFonts, headerTitleStyle } from './src/theme/fonts';
 import { OnboardingScreen } from './src/screens/OnboardingScreen';
 import { RootDrawer } from './src/navigation/RootDrawer';
 import { SettingsScreen } from './src/screens/SettingsScreen';
@@ -39,6 +39,7 @@ function RootNavigator() {
         screenOptions={{
           headerStyle: { backgroundColor: colors.surface },
           headerTintColor: colors.text,
+          headerTitleStyle: { ...headerTitleStyle, color: colors.text },
           headerShadowVisible: false,
           contentStyle: { backgroundColor: colors.background },
         }}

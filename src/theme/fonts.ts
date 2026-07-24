@@ -45,3 +45,11 @@ export const FONT_FAMILY: Record<'regular' | 'medium' | 'bold' | 'heavy', string
   bold: DISPLAY_FONT_ENABLED ? 'League-Regular' : undefined,
   heavy: DISPLAY_FONT_ENABLED ? 'League-Regular' : undefined,
 };
+
+/** React Navigation's native-stack header title is drawn by the library
+ * itself, not through <AppText> — so it needs this applied explicitly in
+ * every navigator's screenOptions.headerTitleStyle, or it silently falls
+ * back to the plain system font regardless of what AppText does elsewhere. */
+export const headerTitleStyle = FONT_FAMILY.bold
+  ? { fontFamily: FONT_FAMILY.bold }
+  : { fontWeight: '700' as const };
