@@ -6,6 +6,7 @@ import { PlaceholderCard } from './PlaceholderCard';
 import { useAsyncData } from '../hooks/useAsyncData';
 import { fetchScheduleForRegion, type ScheduleEvent } from '../api/lolesportsClient';
 import type { Region } from '../types/team';
+import { formatMatchDateTime } from '../utils/formatMatchTime';
 
 export function UpcomingGames({ region }: { region: Region }) {
   const { colors } = useTheme();
@@ -47,11 +48,7 @@ function MatchRow({ event }: { event: ScheduleEvent }) {
   const { colors } = useTheme();
   const [teamA, teamB] = event.match.teams;
   const isLive = event.state === 'inProgress';
-  const time = new Date(event.startTime).toLocaleString(undefined, {
-    weekday: 'short',
-    hour: 'numeric',
-    minute: '2-digit',
-  });
+  const time = formatMatchDateTime(event.startTime);
 
   return (
     <View style={[styles.row, { backgroundColor: colors.surface, borderColor: colors.border }]}>

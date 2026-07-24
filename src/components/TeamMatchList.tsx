@@ -5,6 +5,7 @@ import { AppText } from './AppText';
 import { PlaceholderCard } from './PlaceholderCard';
 import type { ScheduleEvent } from '../api/lolesportsClient';
 import type { AsyncStatus } from '../hooks/useAsyncData';
+import { formatMatchDate, formatMatchDateTime } from '../utils/formatMatchTime';
 
 interface Props {
   status: AsyncStatus;
@@ -67,14 +68,11 @@ function MatchRow({ event, teamCode }: { event: ScheduleEvent; teamCode: string 
   } else if (event.state === 'completed') {
     const outcome = self?.result?.outcome;
     const score = `${self?.result?.gameWins ?? 0}-${opponent?.result?.gameWins ?? 0}`;
-    rightLabel = `${outcome === 'win' ? 'W' : outcome === 'loss' ? 'L' : '—'} ${score}`;
+    const resultLabel = `${outcome === 'win' ? 'W' : outcome === 'loss' ? 'L' : '—'} ${score}`;
+    rightLabel = `${resultLabel} \u00b7 ${formatMatchDate(event.startTime)}`;
     rightColor = outcome === 'win' ? colors.accent : colors.textMuted;
   } else {
-    rightLabel = new Date(event.startTime).toLocaleString(undefined, {
-      weekday: 'short',
-      hour: 'numeric',
-      minute: '2-digit',
-    });
+    rightLabel = formatMatchDateTime(event.startTime);
     rightColor = colors.textMuted;
   }
 
