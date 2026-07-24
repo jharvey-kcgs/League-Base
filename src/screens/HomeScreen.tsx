@@ -5,7 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { getTeam } from '../data/teamsStore';
 import { useTheme } from '../theme/ThemeContext';
-import { safeColor } from '../utils/colorContrast';
+import { safeColor, readableTextOn } from '../utils/colorContrast';
 import { LaneIcon } from '../components/LaneIcon';
 import { AppText } from '../components/AppText';
 import { laneFromRole, isSubstitute } from '../types/team';
@@ -75,7 +75,7 @@ function TeamOverview({
   return (
     <ScrollView style={styles.container}>
       <View style={[styles.banner, { backgroundColor: teamColor }]}>
-        <TeamLogo url={team.logoUrl} name={team.name} tint={colors.accentText} />
+        <TeamLogo url={team.logoUrl} name={team.name} ringColor={teamColor} />
         <AppText weight="bold" style={[styles.bannerRegion, { color: colors.accentText }]}>
           {team.region}
         </AppText>
@@ -148,24 +148,34 @@ function TeamOverview({
   );
 }
 
-function TeamLogo({ url, name, tint }: { url: string; name: string; tint: string }) {
+const LOGO_CHIP_COLOR = '#0B0B0D';
+
+function TeamLogo({
+  url,
+  name,
+  ringColor,
+}: {
+  url: string;
+  name: string;
+  ringColor: string;
+}) {
   const [failed, setFailed] = useState(false);
-  if (!url || failed) {
-    return (
-      <View style={styles.logoFallback}>
-        <AppText weight="heavy" style={[styles.logoFallbackText, { color: tint }]}>
+  const fallbackTint = readableTextOn(LOGO_CHIP_COLOR);
+  return (
+    <View style={[styles.logoChip, { borderColor: ringColor }]}>
+      {!url || failed ? (
+        <AppText weight="heavy" style={[styles.logoFallbackText, { color: fallbackTint }]}>
           {name.slice(0, 2).toUpperCase()}
         </AppText>
-      </View>
-    );
-  }
-  return (
-    <Image
-      source={{ uri: url }}
-      style={styles.logo}
-      resizeMode="contain"
-      onError={() => setFailed(true)}
-    />
+      ) : (
+        <Image
+          source={{ uri: url }}
+          style={styles.logo}
+          resizeMode="contain"
+          onError={() => setFailed(true)}
+        />
+      )}
+    </View>
   );
 }
 
@@ -269,14 +279,23 @@ const styles = StyleSheet.create({
   headerButton: { width: 32, alignItems: 'center' },
   headerTitle: { fontSize: 16, letterSpacing: 1.5 },
   banner: { paddingTop: 32, paddingBottom: 24, alignItems: 'center' },
-  logo: { width: 72, height: 72 },
-  logoFallback: {
-    width: 72,
-    height: 72,
+  logoChip: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    borderWidth: 2,
     alignItems: 'center',
     justifyContent: 'center',
+    // Fixed dark backdrop — deliberately not tied to team color or
+    // light/dark mode. Team logos are Liquipedia's "darkmode" variants
+    // (built to sit on a dark background), and several team colors are
+    // close enough in hue/lightness to their own logo that the logo
+    // nearly disappears when the banner itself is the backdrop. A
+    // constant dark chip guarantees contrast regardless of team color.
+    backgroundColor: LOGO_CHIP_COLOR,
   },
-  logoFallbackText: { fontSize: 24 },
+  logo: { width: 64, height: 64 },
+  logoFallbackText: { fontSize: 22 },
   bannerRegion: { fontSize: 12, letterSpacing: 1.5, marginTop: 10, opacity: 0.85 },
   bannerName: { fontSize: 24, marginTop: 2 },
   section: { paddingHorizontal: 20, marginTop: 24 },
