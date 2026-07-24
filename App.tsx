@@ -1,0 +1,80 @@
+import React from 'react';
+import { ActivityIndicator, View } from 'react-native';
+import { NavigationContainer } from '@react-navigation/native';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { ThemeProvider, useTheme } from './src/theme/ThemeContext';
+import { useAppFonts } from './src/theme/fonts';
+import { OnboardingScreen } from './src/screens/OnboardingScreen';
+import { HomeScreen } from './src/screens/HomeScreen';
+import { SettingsScreen } from './src/screens/SettingsScreen';
+import { ProfileSettingsScreen } from './src/screens/settings/ProfileSettingsScreen';
+import { ThemeSettingsScreen } from './src/screens/settings/ThemeSettingsScreen';
+import { AboutScreen } from './src/screens/settings/AboutScreen';
+import { FAQScreen } from './src/screens/settings/FAQScreen';
+import { RegionPlaceholderScreen } from './src/screens/RegionPlaceholderScreen';
+import type { RootStackParamList } from './src/navigation/types';
+
+const Stack = createNativeStackNavigator<RootStackParamList>();
+
+function RootNavigator() {
+  const { favoriteTeamId, isLoading, colors } = useTheme();
+
+  if (isLoading) {
+    return (
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.background }}>
+        <ActivityIndicator color={colors.accent} />
+      </View>
+    );
+  }
+
+  return (
+    <NavigationContainer>
+      <Stack.Navigator
+        screenOptions={{
+          headerStyle: { backgroundColor: colors.surface },
+          headerTintColor: colors.text,
+          headerShadowVisible: false,
+          contentStyle: { backgroundColor: colors.background },
+        }}
+      >
+        {!favoriteTeamId ? (
+          <Stack.Screen name="Onboarding" component={OnboardingScreen} options={{ headerShown: false }} />
+        ) : (
+          <Stack.Screen name="Home" component={HomeScreen} options={{ headerShown: false }} />
+        )}
+        <Stack.Screen name="Settings" component={SettingsScreen} options={{ title: 'Settings' }} />
+        <Stack.Screen
+          name="SettingsProfile"
+          component={ProfileSettingsScreen}
+          options={{ title: 'Profile' }}
+        />
+        <Stack.Screen name="SettingsTheme" component={ThemeSettingsScreen} options={{ title: 'Theme' }} />
+        <Stack.Screen name="SettingsAbout" component={AboutScreen} options={{ title: 'About' }} />
+        <Stack.Screen name="SettingsFAQ" component={FAQScreen} options={{ title: 'FAQ' }} />
+        <Stack.Screen
+          name="RegionPlaceholder"
+          component={RegionPlaceholderScreen}
+          options={{ title: 'Regions' }}
+        />
+      </Stack.Navigator>
+    </NavigationContainer>
+  );
+}
+
+export default function App() {
+  const [fontsLoaded] = useAppFonts();
+
+  if (!fontsLoaded) {
+    return (
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+        <ActivityIndicator />
+      </View>
+    );
+  }
+
+  return (
+    <ThemeProvider>
+      <RootNavigator />
+    </ThemeProvider>
+  );
+}
