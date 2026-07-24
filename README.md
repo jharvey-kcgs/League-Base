@@ -73,9 +73,10 @@ a reload.
 | `@expo/vector-icons` | The cog, hamburger, and drawer-menu icons |
 | `expo-font` | Font-loading infrastructure for the header typeface — currently a no-op until a font file is actually added, see [Fonts](#6-fonts) |
 
-Nothing here yet for match data, since that layer isn't built — no HTTP
-client beyond what's built into `fetch`. `uuid`, date pickers, and similar
-will show up once match schedules / VOD lists need them.
+The lolesports.com API client (Section 4's `src/api/`) uses RN's built-in
+`fetch` directly — no HTTP client dependency needed for that. `uuid`, date
+pickers, and similar will show up once VOD lists / more detailed match
+views need them.
 
 ---
 
@@ -125,8 +126,8 @@ src/
     HomeScreen.tsx                  Cog / title / hamburger header + favorite
                                      team's overview (renders TeamOverview)
     RegionHomeScreen.tsx            Region News (Twitter/X + YouTube
-                                     link-out buttons), Upcoming
-                                     Games + Overall Standings placeholders,
+                                     link-out buttons), Upcoming Games (real
+                                     data), Overall Standings (placeholder),
                                      and the team grid
     TeamScreen.tsx                  Any team's overview — same TeamOverview
                                      HomeScreen uses, reached via RegionStack
@@ -155,6 +156,9 @@ src/
                                       color) — Twitter/X, YouTube, Weibo on
                                       team pages; Twitter/X, YouTube on
                                       region pages
+    UpcomingGames.tsx                 Live/upcoming matches for a region —
+                                       real data (lolesportsClient), with
+                                       its own loading/error/empty states
     LaneIcon.tsx                     Maps a roster role string to its lane
                                      icon, with a small dot badge for subs
 
@@ -169,6 +173,12 @@ src/
                                       id/region
     favoriteTeam.ts                  AsyncStorage: favoriteTeamId + theme
                                       mode preference
+
+  api/
+    lolesportsClient.ts               lolesports.com unofficial API —
+                                       leagues, schedule, live games.
+                                       Undocumented endpoint, see file
+                                       header before touching it
 
   utils/
     colorContrast.ts                 Picks readable black/white text
@@ -326,11 +336,18 @@ config changes don't take effect on a plain reload.
 
 ## 8. Roadmap (intentionally not built yet)
 
-- Upcoming Games and Overall Standings on `RegionHomeScreen` are still
-  `PlaceholderCard`s, waiting on the data layer below
-- Live match results, standings, and VOD links — lolesports.com +
-  Leaguepedia Cargo API clients, plus a season-calendar-driven cache so
-  roster data refreshes more often between splits than mid-season
+- Overall Standings on `RegionHomeScreen`, and Record/Matches/VODs on
+  `TeamOverview`, are still `PlaceholderCard`s — Upcoming Games is real
+  data now (`src/api/lolesportsClient.ts`), same client just needs
+  standings wired in (requires resolving a tournament ID, not just a
+  league ID — see the client's file header) and a per-team schedule filter
+  for `TeamOverview`
+- A shared, persisted, TTL-aware cache for every `api/` call, plus
+  `seasonCalendar.ts` to drive a shorter TTL between splits than
+  mid-season (discussed early on, not yet built — right now every fetch
+  is a live network call, no caching at all)
+- VOD links and detailed scoreboards — Leaguepedia Cargo API client, not
+  started
 - The actual Rajdhani font files (Section 6) — not bundled for licensing
   reasons (nothing legally blocks it, unlike Beaufort — just needs you to
   download it)

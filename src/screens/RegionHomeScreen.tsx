@@ -6,6 +6,7 @@ import { getRegionInfo, getTeamIdsForRegion, getTeam } from '../data/teamsStore'
 import { Section } from '../components/Section';
 import { PlaceholderCard } from '../components/PlaceholderCard';
 import { FollowButton } from '../components/FollowButton';
+import { UpcomingGames } from '../components/UpcomingGames';
 import { TeamTile } from '../components/TeamTile';
 import type { Region } from '../types/team';
 import type { RegionStackParamList } from '../navigation/types';
@@ -33,7 +34,7 @@ export function RegionHomeScreen({ navigation, region }: Props) {
       </Section>
 
       <Section title="Upcoming games">
-        <PlaceholderCard label="Match schedule" />
+        <UpcomingGames region={region} />
       </Section>
 
       <Section title="Overall standings">
