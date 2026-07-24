@@ -58,7 +58,7 @@ npx expo install @react-navigation/native @react-navigation/native-stack `
 | `react-native-screens`, `react-native-safe-area-context` | Required by React Navigation, not used directly |
 | `@react-native-async-storage/async-storage` | Local storage for favorite team + light/dark mode — the entire app's persisted state runs on this |
 | `@expo/vector-icons` | The cog and hamburger icons in Home's header |
-| `expo-font` | Font-loading infrastructure for the header typeface — currently a no-op until a font file is actually added, see [Fonts](#5-fonts) |
+| `expo-font` | Font-loading infrastructure for the header typeface — currently a no-op until a font file is actually added, see [Fonts](#6-fonts) |
 
 Nothing here yet for match data, since that layer isn't built — no HTTP
 client beyond what's built into `fetch`. `uuid`, date pickers, and similar
@@ -84,8 +84,16 @@ App.tsx                            Navigation stack, ThemeProvider, font
                                     loading, first-launch onboarding gate
 
 assets/
-  images/lanes/                    Top/Jungle/Mid/ADC/Support role icons
-                                    (transparent PNG, gold/black)
+  icon.png                          App icon (1024x1024, from LeagueBaseLogo)
+  adaptive-icon.png                 Android adaptive icon foreground (same
+                                     logo, safe-zone padded, transparent bg)
+  images/
+    lanes/                          Top/Jungle/Mid/ADC/Support role icons
+                                     (transparent PNG, gold/black)
+    coach.png                       Headset icon for coaching staff rows —
+                                     white silhouette, transparent bg, tinted
+                                     in code rather than a fixed color (see
+                                     Icons section)
   fonts/                           Empty until a display font file is added
                                     — see Fonts section
   data/teams.json                  All 42 teams across 4 regions: colors,
@@ -148,7 +156,25 @@ src/
 
 ---
 
-## 5. Fonts
+## 5. Icons
+
+App icon and adaptive icon come from a single square logo — see
+`assets/icon.png` / `assets/adaptive-icon.png`, wired up in `app.json`'s
+`icon` and `android.adaptiveIcon` fields. The adaptive icon foreground was
+generated with extra padding around the shield (Android's launcher masks
+the outer ring into a circle, squircle, or rounded square depending on the
+device, so content needs to stay inside a safe zone) — regenerate it the
+same way if the logo ever changes rather than reusing `icon.png` directly.
+
+In-app icons (lane roles, the coach headset) are single-color transparent
+PNGs tinted at render time via RN's `tintColor` style, rather than baked-in
+colors — `<Image source={...} style={{ tintColor: colors.textMuted }} />`.
+That's deliberate: a fixed color (black, in the coach icon's original form)
+can disappear against the app's near-black dark background, and tinting
+from the current theme color means it's always legible in both light and
+dark mode without needing a separate asset per mode.
+
+## 6. Fonts
 
 `AppText`'s bold/heavy headers point at **"League"** from FontGet — a
 free-for-commercial-use lookalike inspired by the older LoL logo. This is
@@ -170,7 +196,7 @@ bold/heavy, so it's reserved for headers where a display face fits.
 
 ---
 
-## 6. Known setup gotchas
+## 7. Known setup gotchas
 
 ### Gotcha #1: No package.json / why we skip `create-expo-app`
 
@@ -241,7 +267,7 @@ already named correctly — comes up if you split new files out of them.
 
 ---
 
-## 7. Roadmap (intentionally not built yet)
+## 8. Roadmap (intentionally not built yet)
 
 - Live match results, standings, and VOD links — lolesports.com +
   Leaguepedia Cargo API clients, plus a season-calendar-driven cache so
@@ -251,7 +277,7 @@ already named correctly — comes up if you split new files out of them.
 - Twitter/X WebView embed for LCS/LEC/LCK teams; "View on Weibo"
   external-link button for LPL teams (Home already does the external-link
   version for all three — the embedded-timeline upgrade is Twitter-only)
-- The actual League display font file (Section 5) — not bundled for
+- The actual League display font file (Section 6) — not bundled for
   licensing reasons
 - TestFlight / production builds — hasn't come up yet; ask when you're
   ready to move past Expo Go testing

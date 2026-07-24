@@ -110,9 +110,16 @@ function TeamOverview({
       <Section title="Coaching staff" colors={colors}>
         {team.roster.coaches.map((c) => (
           <View key={c.username} style={styles.coachRow}>
-            <AppText weight="medium" style={[styles.coachName, { color: colors.text }]}>
-              {c.username}
-            </AppText>
+            <View style={styles.coachNameGroup}>
+              <Image
+                source={require('../../assets/images/coach.png')}
+                style={[styles.coachIcon, { tintColor: colors.textMuted }]}
+                resizeMode="contain"
+              />
+              <AppText weight="medium" style={[styles.coachName, { color: colors.text }]}>
+                {c.username}
+              </AppText>
+            </View>
             <AppText style={[styles.coachRole, { color: colors.textMuted }]}>{c.role}</AppText>
           </View>
         ))}
@@ -279,7 +286,9 @@ const styles = StyleSheet.create({
   rosterText: { flex: 1 },
   rosterName: { fontSize: 15 },
   rosterRole: { fontSize: 12, marginTop: 1 },
-  coachRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6 },
+  coachRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 6 },
+  coachNameGroup: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  coachIcon: { width: 15, height: 15 },
   coachName: { fontSize: 14 },
   coachRole: { fontSize: 12 },
   placeholder: { borderWidth: 1, borderRadius: 10, padding: 14 },
