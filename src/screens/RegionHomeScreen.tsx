@@ -5,7 +5,7 @@ import { useTheme } from '../theme/ThemeContext';
 import { getRegionInfo, getTeamIdsForRegion, getTeam } from '../data/teamsStore';
 import { Section } from '../components/Section';
 import { PlaceholderCard } from '../components/PlaceholderCard';
-import { TwitterTimeline } from '../components/TwitterTimeline';
+import { FollowButton } from '../components/FollowButton';
 import { TeamTile } from '../components/TeamTile';
 import type { Region } from '../types/team';
 import type { RegionStackParamList } from '../navigation/types';
@@ -22,7 +22,14 @@ export function RegionHomeScreen({ navigation, region }: Props) {
   return (
     <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
       <Section title="Region news">
-        <TwitterTimeline url={info.twitter} />
+        <View style={styles.followRow}>
+          {info.twitter ? (
+            <FollowButton label="Twitter/X" url={info.twitter} accent={colors.accent} />
+          ) : null}
+          {info.youtube ? (
+            <FollowButton label="YouTube" url={info.youtube} accent={colors.accent} />
+          ) : null}
+        </View>
       </Section>
 
       <Section title="Upcoming games">
@@ -47,5 +54,6 @@ export function RegionHomeScreen({ navigation, region }: Props) {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  followRow: { flexDirection: 'row', gap: 10, flexWrap: 'wrap' },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
 });

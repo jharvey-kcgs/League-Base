@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Image, Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Image, ScrollView, StyleSheet, View } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
 import { safeColor, readableTextOn } from '../utils/colorContrast';
 import { laneFromRole, isSubstitute, compareByLane, laneShortLabel, type Team } from '../types/team';
@@ -7,6 +7,7 @@ import { LaneIcon } from './LaneIcon';
 import { AppText } from './AppText';
 import { Section } from './Section';
 import { PlaceholderCard } from './PlaceholderCard';
+import { FollowButton } from './FollowButton';
 
 /** The full "everything about one team" view — banner, record/matches/VOD
  * placeholders, sorted roster, coaching staff, socials. Shared by HomeScreen
@@ -79,13 +80,13 @@ export function TeamOverview({ team }: { team: Team }) {
       <Section title="Follow">
         <View style={styles.followRow}>
           {team.twitter ? (
-            <FollowButton label="Twitter/X" url={team.twitter} colors={colors} accent={teamColor} />
+            <FollowButton label="Twitter/X" url={team.twitter} accent={teamColor} />
           ) : null}
           {team.weibo ? (
-            <FollowButton label="Weibo" url={team.weibo} colors={colors} accent={teamColor} />
+            <FollowButton label="Weibo" url={team.weibo} accent={teamColor} />
           ) : null}
           {team.youtubeChannel ? (
-            <FollowButton label="YouTube" url={team.youtubeChannel} colors={colors} accent={teamColor} />
+            <FollowButton label="YouTube" url={team.youtubeChannel} accent={teamColor} />
           ) : null}
         </View>
       </Section>
@@ -150,32 +151,6 @@ function RosterRow({
   );
 }
 
-function FollowButton({
-  label,
-  url,
-  colors,
-  accent,
-}: {
-  label: string;
-  url: string;
-  colors: ReturnType<typeof useTheme>['colors'];
-  accent: string;
-}) {
-  return (
-    <Pressable
-      onPress={() => Linking.openURL(url)}
-      style={({ pressed }) => [
-        styles.followButton,
-        { borderColor: accent, opacity: pressed ? 0.7 : 1 },
-      ]}
-    >
-      <AppText weight="bold" style={[styles.followButtonText, { color: colors.text }]}>
-        {label}
-      </AppText>
-    </Pressable>
-  );
-}
-
 const styles = StyleSheet.create({
   container: { flex: 1 },
   banner: { paddingTop: 32, paddingBottom: 24, alignItems: 'center' },
@@ -209,6 +184,4 @@ const styles = StyleSheet.create({
   coachName: { fontSize: 14 },
   coachRole: { fontSize: 12 },
   followRow: { flexDirection: 'row', gap: 10, flexWrap: 'wrap' },
-  followButton: { borderWidth: 1.5, borderRadius: 8, paddingHorizontal: 14, paddingVertical: 8 },
-  followButtonText: { fontSize: 13 },
 });

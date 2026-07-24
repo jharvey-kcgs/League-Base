@@ -46,7 +46,7 @@ Then bring in the packages the project actually uses, the Expo-aware way
 ```powershell
 npx expo install @react-navigation/native @react-navigation/native-stack `
   @react-navigation/drawer react-native-gesture-handler react-native-reanimated react-native-worklets `
-  react-native-screens react-native-safe-area-context react-native-webview `
+  react-native-screens react-native-safe-area-context `
   @react-native-async-storage/async-storage @expo/vector-icons expo-font
 ```
 
@@ -69,7 +69,6 @@ a reload.
 | `@react-navigation/drawer` | The main Drawer — My Team + LCS/LEC/LCK/LPL |
 | `react-native-gesture-handler`, `react-native-reanimated`, `react-native-worklets` | Drawer peer dependencies (swipe-to-open, open/close animation). See [Gotcha #7](#gotcha-7-reanimated-4-needs-react-native-worklets-not-just-react-native-reanimatedplugin) if the Babel plugin errors |
 | `react-native-screens`, `react-native-safe-area-context` | Required by React Navigation, and `SafeAreaView` is used directly for header notch/status-bar clearance |
-| `react-native-webview` | Region News' embedded Twitter/X timeline on `RegionHomeScreen` |
 | `@react-native-async-storage/async-storage` | Local storage for favorite team + light/dark mode — the entire app's persisted state runs on this |
 | `@expo/vector-icons` | The cog, hamburger, and drawer-menu icons |
 | `expo-font` | Font-loading infrastructure for the header typeface — currently a no-op until a font file is actually added, see [Fonts](#6-fonts) |
@@ -125,7 +124,8 @@ src/
     OnboardingScreen.tsx            First-launch team picker, grouped by region
     HomeScreen.tsx                  Cog / title / hamburger header + favorite
                                      team's overview (renders TeamOverview)
-    RegionHomeScreen.tsx            Region News (Twitter embed), Upcoming
+    RegionHomeScreen.tsx            Region News (Twitter/X + YouTube
+                                     link-out buttons), Upcoming
                                      Games + Overall Standings placeholders,
                                      and the team grid
     TeamScreen.tsx                  Any team's overview — same TeamOverview
@@ -151,10 +151,10 @@ src/
     Section.tsx                      Eyebrow title + rule — shared by
                                      TeamOverview and RegionHomeScreen
     PlaceholderCard.tsx              "Not built yet" card — same, shared
-    TwitterTimeline.tsx              Embedded region Twitter/X timeline via
-                                     WebView + widgets.js (real embed, not a
-                                     link-out — team pages still use the
-                                     link-out FollowButton for now)
+    FollowButton.tsx                 External-link button (border in accent
+                                      color) — Twitter/X, YouTube, Weibo on
+                                      team pages; Twitter/X, YouTube on
+                                      region pages
     LaneIcon.tsx                     Maps a roster role string to its lane
                                      icon, with a small dot badge for subs
 
@@ -327,13 +327,10 @@ config changes don't take effect on a plain reload.
 ## 8. Roadmap (intentionally not built yet)
 
 - Upcoming Games and Overall Standings on `RegionHomeScreen` are still
-  `PlaceholderCard`s — Region News (the Twitter embed) is real, but match
-  schedules and standings need the data layer below
+  `PlaceholderCard`s, waiting on the data layer below
 - Live match results, standings, and VOD links — lolesports.com +
   Leaguepedia Cargo API clients, plus a season-calendar-driven cache so
   roster data refreshes more often between splits than mid-season
-- Twitter/X WebView embed for individual team pages (teams currently use
-  the simpler link-out `FollowButton`, plus "View on Weibo" for LPL teams)
 - The actual Rajdhani font files (Section 6) — not bundled for licensing
   reasons (nothing legally blocks it, unlike Beaufort — just needs you to
   download it)
