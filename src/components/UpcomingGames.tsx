@@ -1,37 +1,20 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
 import { AppText } from './AppText';
 import { PlaceholderCard } from './PlaceholderCard';
+import { useAsyncData } from '../hooks/useAsyncData';
 import { fetchScheduleForRegion, type ScheduleEvent } from '../api/lolesportsClient';
 import type { Region } from '../types/team';
 
-type Status = 'loading' | 'error' | 'ready';
-
 export function UpcomingGames({ region }: { region: Region }) {
   const { colors } = useTheme();
-  const [status, setStatus] = useState<Status>('loading');
-  const [events, setEvents] = useState<ScheduleEvent[]>([]);
-
-  useEffect(() => {
-    let cancelled = false;
-    setStatus('loading');
-    fetchScheduleForRegion(region.toLowerCase())
-      .then((all) => {
-        if (cancelled) return;
-        const upcoming = all
-          .filter((e) => e.state === 'unstarted' || e.state === 'inProgress')
-          .sort((a, b) => a.startTime.localeCompare(b.startTime))
-          .slice(0, 5);
-        setEvents(upcoming);
-        setStatus('ready');
-      })
-      .catch(() => {
-        if (!cancelled) setStatus('error');
-      });
-    return () => {
-      cancelled = true;
-    };
+  const { status, data } = useAsyncData(async () => {
+    const all = await fetchScheduleForRegion(region.toLowerCase());
+    return all
+      .filter((e) => e.state === 'unstarted' || e.state === 'inProgress')
+      .sort((a, b) => a.startTime.localeCompare(b.startTime))
+      .slice(0, 5);
   }, [region]);
 
   if (status === 'loading') {
@@ -46,6 +29,7 @@ export function UpcomingGames({ region }: { region: Region }) {
     return <PlaceholderCard label="Match schedule — couldn't load right now, pull to refresh in a bit" />;
   }
 
+  const events = data ?? [];
   if (events.length === 0) {
     return <PlaceholderCard label="No upcoming matches scheduled right now" />;
   }

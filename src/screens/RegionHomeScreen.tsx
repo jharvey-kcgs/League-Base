@@ -4,9 +4,9 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useTheme } from '../theme/ThemeContext';
 import { getRegionInfo, getTeamIdsForRegion, getTeam } from '../data/teamsStore';
 import { Section } from '../components/Section';
-import { PlaceholderCard } from '../components/PlaceholderCard';
 import { FollowButton } from '../components/FollowButton';
 import { UpcomingGames } from '../components/UpcomingGames';
+import { OverallStandings } from '../components/OverallStandings';
 import { TeamTile } from '../components/TeamTile';
 import type { Region } from '../types/team';
 import type { RegionStackParamList } from '../navigation/types';
@@ -54,7 +54,7 @@ export function RegionHomeScreen({ navigation, region }: Props) {
       </Section>
 
       <Section title="Overall standings">
-        <PlaceholderCard label="Regular season standings" />
+        <OverallStandings region={region} />
       </Section>
 
       <Section title="Teams">

@@ -143,22 +143,32 @@ src/
                                      applies the header font where relevant.
                                      Every screen imports Text from here.
     TeamOverview.tsx                 The full team-detail view (banner,
-                                     roster, coaches, socials) — shared by
-                                     HomeScreen and TeamScreen
+                                     record/matches/roster/coaches/socials)
+                                     — shared by HomeScreen and TeamScreen
     TeamTile.tsx                     Logo-chip + name tile — shared by
                                      TeamPickerGrid and RegionHomeScreen
     TeamPickerGrid.tsx               Team-selection grid (all regions),
                                      used by Onboarding and Settings > Profile
     Section.tsx                      Eyebrow title + rule — shared by
                                      TeamOverview and RegionHomeScreen
-    PlaceholderCard.tsx              "Not built yet" card — same, shared
+    PlaceholderCard.tsx              "Not built yet" card — still used for
+                                     VODs, the one section without real data
     FollowButton.tsx                 External-link button (border in accent
-                                      color) — Twitter/X, YouTube, Weibo on
-                                      team pages; Twitter/X, YouTube on
-                                      region pages
+                                      color) — Twitter/X, Weibo, Instagram,
+                                      YouTube, Twitch, Bilibili on team
+                                      pages; same set + Discord on regions
     UpcomingGames.tsx                 Live/upcoming matches for a region —
                                        real data (lolesportsClient), with
                                        its own loading/error/empty states
+    OverallStandings.tsx              Region standings table — real data
+                                       (fetchStandingsForRegion)
+    TeamRecord.tsx                    Team W/L record — takes already-
+                                       fetched schedule events as props
+                                       rather than fetching its own (shares
+                                       one fetch with TeamMatchList, both
+                                       driven from TeamOverview)
+    TeamMatchList.tsx                 Team's upcoming + recent-completed
+                                       matches, same shared-fetch pattern
     LaneIcon.tsx                     Maps a roster role string to its lane
                                      icon, with a small dot badge for subs
 
@@ -176,9 +186,17 @@ src/
 
   api/
     lolesportsClient.ts               lolesports.com unofficial API —
-                                       leagues, schedule, live games.
+                                       leagues, schedule, live games,
+                                       standings (via tournament ID),
+                                       per-team schedule + W/L record.
                                        Undocumented endpoint, see file
                                        header before touching it
+
+  hooks/
+    useAsyncData.ts                   Shared fetch/loading/error/ready
+                                       state — every api/-consuming
+                                       component uses this instead of its
+                                       own copy
 
   utils/
     colorContrast.ts                 Picks readable black/white text
@@ -336,18 +354,16 @@ config changes don't take effect on a plain reload.
 
 ## 8. Roadmap (intentionally not built yet)
 
-- Overall Standings on `RegionHomeScreen`, and Record/Matches/VODs on
-  `TeamOverview`, are still `PlaceholderCard`s — Upcoming Games is real
-  data now (`src/api/lolesportsClient.ts`), same client just needs
-  standings wired in (requires resolving a tournament ID, not just a
-  league ID — see the client's file header) and a per-team schedule filter
-  for `TeamOverview`
+- VOD links and detailed scoreboards — the one section left on
+  `PlaceholderCard`. Needs the Leaguepedia Cargo API client, not started;
+  lolesports.com's schedule/standings data (now wired up everywhere else)
+  doesn't reliably carry VOD links
 - A shared, persisted, TTL-aware cache for every `api/` call, plus
   `seasonCalendar.ts` to drive a shorter TTL between splits than
   mid-season (discussed early on, not yet built — right now every fetch
-  is a live network call, no caching at all)
-- VOD links and detailed scoreboards — Leaguepedia Cargo API client, not
-  started
+  is a live network call every time a screen mounts, no caching at all —
+  worth prioritizing before this gets used heavily, since it means
+  re-fetching leagues/tournaments/standings on every single screen visit)
 - The actual Rajdhani font files (Section 6) — not bundled for licensing
   reasons (nothing legally blocks it, unlike Beaufort — just needs you to
   download it)

@@ -109,3 +109,132 @@ export async function fetchLive(): Promise<ScheduleEvent[]> {
   const data = await apiGet<{ data: { schedule: { events: ScheduleEvent[] } } }>('getLive');
   return data.data.schedule.events ?? [];
 }
+
+// --- Per-team schedule (Record W/L, Recent & Upcoming Matches) ---
+
+/** Schedule events involving one specific team, matched by lolesportsSlug
+ * against the live API's team "code" field — confirmed to line up correctly
+ * (e.g. Team Liquid's stored slug "TLAW" showed up as "TLAW" in real
+ * schedule rows once Upcoming Games went live). */
+export async function fetchScheduleForTeam(regionSlug: string, teamCode: string): Promise<ScheduleEvent[]> {
+  const events = await fetchScheduleForRegion(regionSlug);
+  return events.filter((e) => e.match.teams.some((t) => t.code === teamCode));
+}
+
+export interface TeamRecord {
+  wins: number;
+  losses: number;
+}
+
+/** Computed from completed events' result.outcome for this team — not a
+ * separate API call, since the schedule data already has everything
+ * needed. */
+export function computeRecord(events: ScheduleEvent[], teamCode: string): TeamRecord {
+  let wins = 0;
+  let losses = 0;
+  for (const event of events) {
+    if (event.state !== 'completed') continue;
+    const team = event.match.teams.find((t) => t.code === teamCode);
+    if (team?.result?.outcome === 'win') wins++;
+    if (team?.result?.outcome === 'loss') losses++;
+  }
+  return { wins, losses };
+}
+
+// --- Standings (needs a tournament ID, not a league ID — one more lookup
+// than schedule/live needed) ---
+
+export interface Tournament {
+  id: string;
+  slug: string;
+  startDate: string;
+  endDate: string;
+}
+
+export async function fetchTournamentsForLeague(leagueId: string): Promise<Tournament[]> {
+  const data = await apiGet<{ data: { leagues: Array<{ tournaments: Tournament[] }> } }>(
+    'getTournamentsForLeague',
+    { leagueId }
+  );
+  return data.data.leagues[0]?.tournaments ?? [];
+}
+
+/** Picks whichever tournament's date range includes today. Falls back to
+ * the most recently started one if none matches exactly (e.g. a short gap
+ * between splits where the API hasn't opened the next tournament yet). */
+export function pickCurrentTournament(tournaments: Tournament[]): Tournament | null {
+  if (tournaments.length === 0) return null;
+  const now = Date.now();
+  const current = tournaments.find((t) => {
+    const start = Date.parse(t.startDate);
+    const end = Date.parse(t.endDate);
+    return now >= start && now <= end;
+  });
+  if (current) return current;
+  return [...tournaments].sort((a, b) => Date.parse(b.startDate) - Date.parse(a.startDate))[0];
+}
+
+export interface StandingsRow {
+  ordinal: number;
+  id: string;
+  name: string;
+  code: string;
+  image?: string;
+  wins: number;
+  losses: number;
+}
+
+export async function fetchStandings(tournamentId: string): Promise<StandingsRow[]> {
+  const data = await apiGet<{
+    data: {
+      standings: Array<{
+        stages: Array<{
+          sections: Array<{
+            rankings: Array<{
+              ordinal: number;
+              teams: Array<{
+                id: string;
+                name: string;
+                code: string;
+                image?: string;
+                record?: { wins: number; losses: number };
+              }>;
+            }>;
+          }>;
+        }>;
+      }>;
+    };
+  }>('getStandings', { tournamentId });
+
+  // Regular season is stages[0] in practice — playoffs (bracket-shaped, not
+  // a ranked table) would be a separate stage and doesn't fit "standings"
+  // the way this screen means it.
+  const rankings = data.data.standings[0]?.stages?.[0]?.sections?.[0]?.rankings ?? [];
+  const rows: StandingsRow[] = [];
+  for (const rank of rankings) {
+    for (const team of rank.teams) {
+      rows.push({
+        ordinal: rank.ordinal,
+        id: team.id,
+        name: team.name,
+        code: team.code,
+        image: team.image,
+        wins: team.record?.wins ?? 0,
+        losses: team.record?.losses ?? 0,
+      });
+    }
+  }
+  return rows.sort((a, b) => a.ordinal - b.ordinal);
+}
+
+/** Convenience wrapper: resolves league -> current tournament -> standings
+ * in one call. Returns an empty array (not a throw) at any step that comes
+ * up empty, so a screen can show "no data" rather than crash. */
+export async function fetchStandingsForRegion(regionSlug: string): Promise<StandingsRow[]> {
+  const leagueId = await resolveLeagueId(regionSlug);
+  if (!leagueId) return [];
+  const tournaments = await fetchTournamentsForLeague(leagueId);
+  const current = pickCurrentTournament(tournaments);
+  if (!current) return [];
+  return fetchStandings(current.id);
+}

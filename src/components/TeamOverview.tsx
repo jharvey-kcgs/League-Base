@@ -8,6 +8,10 @@ import { AppText } from './AppText';
 import { Section } from './Section';
 import { PlaceholderCard } from './PlaceholderCard';
 import { FollowButton } from './FollowButton';
+import { TeamRecord } from './TeamRecord';
+import { TeamMatchList } from './TeamMatchList';
+import { useAsyncData } from '../hooks/useAsyncData';
+import { fetchScheduleForTeam } from '../api/lolesportsClient';
 
 /** The full "everything about one team" view — banner, record/matches/VOD
  * placeholders, sorted roster, coaching staff, socials. Shared by HomeScreen
@@ -18,6 +22,12 @@ export function TeamOverview({ team }: { team: Team }) {
   const teamColor = safeColor(team.colors.primary, colors.accent);
   const players = team.roster.players.filter((p) => !isSubstitute(p.role)).sort(compareByLane);
   const substitutes = team.roster.players.filter((p) => isSubstitute(p.role));
+  // Shared by the Record and Matches sections below — one fetch, not two,
+  // since both need the same underlying schedule data.
+  const schedule = useAsyncData(
+    () => fetchScheduleForTeam(team.region.toLowerCase(), team.lolesportsSlug),
+    [team.region, team.lolesportsSlug]
+  );
 
   return (
     <ScrollView style={styles.container}>
@@ -32,11 +42,11 @@ export function TeamOverview({ team }: { team: Team }) {
       </View>
 
       <Section title="Record">
-        <PlaceholderCard label="Win/loss record" />
+        <TeamRecord status={schedule.status} events={schedule.data} teamCode={team.lolesportsSlug} />
       </Section>
 
       <Section title="Recent & upcoming matches">
-        <PlaceholderCard label="Match schedule and results" />
+        <TeamMatchList status={schedule.status} events={schedule.data} teamCode={team.lolesportsSlug} />
       </Section>
 
       <Section title="Roster">
