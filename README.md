@@ -45,9 +45,20 @@ Then bring in the packages the project actually uses, the Expo-aware way
 
 ```powershell
 npx expo install @react-navigation/native @react-navigation/native-stack `
+  @react-navigation/drawer react-native-gesture-handler react-native-reanimated react-native-worklets `
   react-native-screens react-native-safe-area-context `
   @react-native-async-storage/async-storage @expo/vector-icons expo-font
 ```
+
+Also add `babel.config.js`'s `react-native-worklets/plugin` line (already in
+the config file I gave you) if you're merging by hand rather than replacing
+the whole file. Reanimated 4 (required for the New Architecture — see
+`app.json`'s `newArchEnabled`) moved its Babel plugin into the separate
+`react-native-worklets` package, so both the install *and* the plugin path
+matter — an older `react-native-reanimated/plugin` reference will fail with
+`Cannot find module 'react-native-worklets/plugin'`. Babel config changes
+need a full cache clear to take effect: `npx expo start --clear`, not just
+a reload.
 
 ### What's actually installed, and why
 
@@ -100,27 +111,39 @@ assets/
                                     logos, socials, full rosters + coaches
 
 src/
-  navigation/types.ts               Stack param list
+  navigation/
+    types.ts                         Root Stack / Drawer / RegionStack param
+                                      lists + composite prop helpers
+    RootDrawer.tsx                    My Team + LCS/LEC/LCK/LPL
+    RegionStack.tsx                   Factory: RegionHome -> Team, one
+                                       instance per region
 
   screens/
     OnboardingScreen.tsx            First-launch team picker, grouped by region
     HomeScreen.tsx                  Cog / title / hamburger header + favorite
-                                     team's roster, coaches, socials
+                                     team's overview (renders TeamOverview)
+    RegionHomeScreen.tsx            Team grid for one region (News/Games/
+                                     Standings land in step 4)
+    TeamScreen.tsx                  Any team's overview — same TeamOverview
+                                     HomeScreen uses, reached via RegionStack
     SettingsScreen.tsx              Nested menu: Profile, Theme, About, FAQ, Data
     ProfileSettingsScreen.tsx       Re-run the team picker to change favorite
     ThemeSettingsScreen.tsx         Light / dark / match-device
     AboutScreen.tsx                 What the app does, where data comes from
     FAQScreen.tsx                   Common questions
     DataSettingsScreen.tsx          Export / import / delete app data
-    RegionPlaceholderScreen.tsx     Stand-in for the hamburger target until
-                                     real region browsing is built
 
   components/
     AppText.tsx                     Drop-in replacement for RN's <Text> —
                                      applies the header font where relevant.
                                      Every screen imports Text from here.
-    TeamPickerGrid.tsx               The team-selection grid, shared by
-                                     Onboarding and Settings > Profile
+    TeamOverview.tsx                 The full team-detail view (banner,
+                                     roster, coaches, socials) — shared by
+                                     HomeScreen and TeamScreen
+    TeamTile.tsx                     Logo-chip + name tile — shared by
+                                     TeamPickerGrid and RegionHomeScreen
+    TeamPickerGrid.tsx               Team-selection grid (all regions),
+                                     used by Onboarding and Settings > Profile
     LaneIcon.tsx                     Maps a roster role string to its lane
                                      icon, with a small dot badge for subs
 
@@ -265,15 +288,33 @@ Any file containing JSX (`<Component>` tags) must use `.tsx`. All the
 `theme/`, `components/`, and `screens/` files that render something are
 already named correctly — comes up if you split new files out of them.
 
+### Gotcha #7: Reanimated 4 needs `react-native-worklets`, not just `react-native-reanimated/plugin`
+
+Hit this bringing in the Drawer (`@react-navigation/drawer` depends on
+Reanimated). SDK 54 installs Reanimated 4, which requires the New
+Architecture (already on — see `app.json`'s `newArchEnabled`) and moved its
+Babel plugin into a separate `react-native-worklets` package. Symptom:
+
+```
+Error: [BABEL]: Cannot find module 'react-native-worklets/plugin'
+```
+
+Fix: `npx expo install react-native-worklets`, then make sure
+`babel.config.js` points at `'react-native-worklets/plugin'` (not the old
+`'react-native-reanimated/plugin'`), then `npx expo start --clear` — Babel
+config changes don't take effect on a plain reload.
+
 ---
 
 ## 8. Roadmap (intentionally not built yet)
 
+- Region home content beyond the team grid — Region News (Twitter/X embed,
+  region-level `twitter`/`youtube` fields already in `teams.json`),
+  Upcoming Games, Overall Standings. Same placeholder-card treatment
+  `TeamOverview` already uses for Record/Matches/VODs.
 - Live match results, standings, and VOD links — lolesports.com +
   Leaguepedia Cargo API clients, plus a season-calendar-driven cache so
   roster data refreshes more often between splits than mid-season
-- Real Drawer/region navigation (`RegionHomeScreen`, `TeamScreen` as a
-  reusable component) — replaces the current hamburger placeholder
 - Twitter/X WebView embed for LCS/LEC/LCK teams; "View on Weibo"
   external-link button for LPL teams (Home already does the external-link
   version for all three — the embedded-timeline upgrade is Twitter-only)

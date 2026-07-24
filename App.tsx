@@ -1,3 +1,8 @@
+// Must be the first import in the entry file — react-native-gesture-handler
+// (a Drawer dependency) sets up native event handling that other imports
+// rely on being ready first.
+import 'react-native-gesture-handler';
+
 import React from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
@@ -6,14 +11,13 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ThemeProvider, useTheme } from './src/theme/ThemeContext';
 import { useAppFonts } from './src/theme/fonts';
 import { OnboardingScreen } from './src/screens/OnboardingScreen';
-import { HomeScreen } from './src/screens/HomeScreen';
+import { RootDrawer } from './src/navigation/RootDrawer';
 import { SettingsScreen } from './src/screens/SettingsScreen';
 import { ProfileSettingsScreen } from './src/screens/ProfileSettingsScreen';
 import { ThemeSettingsScreen } from './src/screens/ThemeSettingsScreen';
 import { AboutScreen } from './src/screens/AboutScreen';
 import { FAQScreen } from './src/screens/FAQScreen';
 import { DataSettingsScreen } from './src/screens/DataSettingsScreen';
-import { RegionPlaceholderScreen } from './src/screens/RegionPlaceholderScreen';
 import type { RootStackParamList } from './src/navigation/types';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -42,7 +46,7 @@ function RootNavigator() {
         {!favoriteTeamId ? (
           <Stack.Screen name="Onboarding" component={OnboardingScreen} options={{ headerShown: false }} />
         ) : (
-          <Stack.Screen name="Home" component={HomeScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="MainDrawer" component={RootDrawer} options={{ headerShown: false }} />
         )}
         <Stack.Screen name="Settings" component={SettingsScreen} options={{ title: 'Settings' }} />
         <Stack.Screen
@@ -54,11 +58,6 @@ function RootNavigator() {
         <Stack.Screen name="SettingsAbout" component={AboutScreen} options={{ title: 'About' }} />
         <Stack.Screen name="SettingsFAQ" component={FAQScreen} options={{ title: 'FAQ' }} />
         <Stack.Screen name="SettingsData" component={DataSettingsScreen} options={{ title: 'Data' }} />
-        <Stack.Screen
-          name="RegionPlaceholder"
-          component={RegionPlaceholderScreen}
-          options={{ title: 'Regions' }}
-        />
       </Stack.Navigator>
     </NavigationContainer>
   );

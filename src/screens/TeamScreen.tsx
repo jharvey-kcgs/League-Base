@@ -5,9 +5,9 @@ import { getTeam } from '../data/teamsStore';
 import { useTheme } from '../theme/ThemeContext';
 import { AppText } from '../components/AppText';
 import { TeamOverview } from '../components/TeamOverview';
-import type { RootStackParamList } from '../navigation/types';
+import type { RegionStackParamList } from '../navigation/types';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'Team'>;
+type Props = NativeStackScreenProps<RegionStackParamList, 'Team'>;
 
 export function TeamScreen({ route, navigation }: Props) {
   const { colors } = useTheme();

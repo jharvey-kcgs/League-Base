@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
-import { ActivityIndicator, Image, Pressable, SectionList, StyleSheet, View } from 'react-native';
+import { SectionList, StyleSheet, View } from 'react-native';
 import { getTeamsGroupedByRegion } from '../data/teamsStore';
 import { useTheme } from '../theme/ThemeContext';
-import { safeColor } from '../utils/colorContrast';
 import { AppText } from './AppText';
-import type { Team } from '../types/team';
+import { TeamTile } from './TeamTile';
 
 interface Props {
   /** Called after the pick is saved to storage. */
@@ -51,11 +50,10 @@ export function TeamPickerGrid({ onPick, currentTeamId }: Props) {
             <TeamTile
               key={id}
               team={team}
-              isSaving={savingId === id}
-              isCurrent={currentTeamId === id}
+              isLoading={savingId === id}
+              isHighlighted={currentTeamId === id}
               disabled={savingId !== null}
               onPress={() => handlePick(id)}
-              colors={colors}
             />
           ))}
         </View>
@@ -64,63 +62,6 @@ export function TeamPickerGrid({ onPick, currentTeamId }: Props) {
   );
 }
 
-function TeamTile({
-  team,
-  isSaving,
-  isCurrent,
-  disabled,
-  onPress,
-  colors,
-}: {
-  team: Team;
-  isSaving: boolean;
-  isCurrent: boolean;
-  disabled: boolean;
-  onPress: () => void;
-  colors: ReturnType<typeof useTheme>['colors'];
-}) {
-  const [imageFailed, setImageFailed] = useState(false);
-  const teamColor = safeColor(team.colors.primary, colors.accent);
-
-  return (
-    <Pressable
-      onPress={onPress}
-      disabled={disabled}
-      style={({ pressed }) => [
-        styles.tile,
-        {
-          backgroundColor: colors.surface,
-          borderColor: teamColor,
-          borderWidth: isCurrent ? 3 : 2,
-          opacity: disabled && !isSaving ? 0.4 : pressed ? 0.7 : 1,
-        },
-      ]}
-    >
-      <View style={styles.logoWrap}>
-        {isSaving ? (
-          <ActivityIndicator color={teamColor} />
-        ) : imageFailed || !team.logoUrl ? (
-          <AppText weight="heavy" style={[styles.logoFallback, { color: teamColor }]}>
-            {team.name.slice(0, 2).toUpperCase()}
-          </AppText>
-        ) : (
-          <Image
-            source={{ uri: team.logoUrl }}
-            style={styles.logo}
-            resizeMode="contain"
-            onError={() => setImageFailed(true)}
-          />
-        )}
-      </View>
-      <AppText weight="medium" style={[styles.tileName, { color: colors.text }]} numberOfLines={1}>
-        {team.name}
-      </AppText>
-    </Pressable>
-  );
-}
-
-const TILE_SIZE = 100;
-
 const styles = StyleSheet.create({
   listContent: { paddingHorizontal: 16, paddingBottom: 40 },
   sectionHeader: { paddingTop: 20, paddingBottom: 10 },
@@ -128,16 +69,4 @@ const styles = StyleSheet.create({
   sectionName: { fontSize: 12, marginTop: 2 },
   sectionRule: { height: 1, marginTop: 8 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
-  tile: {
-    width: TILE_SIZE,
-    height: TILE_SIZE,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 8,
-  },
-  logoWrap: { width: 48, height: 48, alignItems: 'center', justifyContent: 'center' },
-  logo: { width: 48, height: 48 },
-  logoFallback: { fontSize: 18 },
-  tileName: { fontSize: 11, marginTop: 8, textAlign: 'center' },
 });

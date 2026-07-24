@@ -2,16 +2,13 @@ import React from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { getTeam } from '../data/teamsStore';
 import { useTheme } from '../theme/ThemeContext';
 import { AppText } from '../components/AppText';
 import { TeamOverview } from '../components/TeamOverview';
-import type { RootStackParamList } from '../navigation/types';
+import type { HomeScreenProps } from '../navigation/types';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
-
-export function HomeScreen({ navigation }: Props) {
+export function HomeScreen({ navigation }: HomeScreenProps) {
   const { favoriteTeamId, colors } = useTheme();
   const team = favoriteTeamId ? getTeam(favoriteTeamId) : undefined;
 
@@ -20,7 +17,7 @@ export function HomeScreen({ navigation }: Props) {
       <HomeHeader
         colors={colors}
         onOpenSettings={() => navigation.navigate('Settings')}
-        onOpenRegions={() => navigation.navigate('RegionPlaceholder')}
+        onOpenRegions={() => navigation.openDrawer()}
       />
 
       {!team ? (
