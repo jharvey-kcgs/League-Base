@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Image, Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { getTeam } from '../data/teamsStore';
@@ -17,7 +18,7 @@ export function HomeScreen({ navigation }: Props) {
   const team = favoriteTeamId ? getTeam(favoriteTeamId) : undefined;
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       <HomeHeader
         colors={colors}
         onOpenSettings={() => navigation.navigate('Settings')}
@@ -32,7 +33,7 @@ export function HomeScreen({ navigation }: Props) {
       ) : (
         <TeamOverview team={team} colors={colors} />
       )}
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -261,7 +262,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingTop: 54,
+    paddingTop: 8,
     paddingBottom: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },

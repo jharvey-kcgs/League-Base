@@ -1,5 +1,6 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/ThemeContext';
 import { TeamPickerGrid } from '../components/TeamPickerGrid';
 import { AppText } from '../components/AppText';
@@ -15,7 +16,7 @@ export function OnboardingScreen({ onComplete }: Props) {
   const { colors } = useTheme();
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       <View style={styles.header}>
         <AppText weight="bold" style={[styles.eyebrow, { color: colors.accent }]}>
           WELCOME TO LEAGUE BASE
@@ -24,12 +25,12 @@ export function OnboardingScreen({ onComplete }: Props) {
           Pick your team
         </AppText>
         <AppText style={[styles.subtitle, { color: colors.textMuted }]}>
-          This sets your home screen and app colors. Change it later in Settings.
+          This sets your home screen and app colors. You can change this later in Settings.
         </AppText>
       </View>
 
       <TeamPickerGrid onPick={() => onComplete?.()} />
-    </View>
+    </SafeAreaView>
   );
 }
 
