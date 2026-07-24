@@ -12,6 +12,12 @@ export function getRegionDisplayName(region: Region): string {
   return data.regions[region].displayName;
 }
 
+/** Full region record — displayName, socials, team list. Prefer this over
+ * the individual getters below when a screen needs more than one field. */
+export function getRegionInfo(region: Region) {
+  return data.regions[region];
+}
+
 export function getTeamIdsForRegion(region: Region): string[] {
   return data.regions[region].teamIds;
 }

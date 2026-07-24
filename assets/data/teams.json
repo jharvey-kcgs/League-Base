@@ -5,18 +5,34 @@
 
   "regions": {
     "LCS": {
+      "leaguepediaPage": "https://liquipedia.net/leagueoflegends/LCS",
+      "logoUrl": "https://liquipedia.net/commons/images/thumb/f/f7/League_Championship_Series_lightmode.png/900px-League_Championship_Series_lightmode.png",
+      "twitter": "https://x.com/LCSOfficial",
+      "youtube": "https://www.youtube.com/@LCS",
       "displayName": "League Championship Series",
       "teamIds": ["c9", "dig", "fly", "sr", "tl", "sen", "lyon", "dsg"]
     },
     "LEC": {
+      "leaguepediaPage": "https://liquipedia.net/leagueoflegends/LEC",
+      "logoUrl": "https://liquipedia.net/commons/images/thumb/0/0b/LoL_EMEA_Championship_full_darkmode.png/900px-LoL_EMEA_Championship_full_darkmode.png",
+      "twitter": "https://x.com/LEC",
+      "youtube": "https://www.youtube.com/LEC",
       "displayName": "League of Legends EMEA Championship",
       "teamIds": ["fnc", "g2", "gx", "kc", "vit", "th", "shf", "mkoi", "skg", "nv"]
     },
     "LCK": {
+      "leaguepediaPage": "https://liquipedia.net/leagueoflegends/LCK",
+      "logoUrl": "https://liquipedia.net/commons/images/thumb/3/34/LCK_2021_full_darkmode.png/900px-LCK_2021_full_darkmode.png",
+      "twitter": "https://x.com/LCK",
+      "youtube": "https://www.youtube.com/channel/UCKVlixycWmapnGQ_wht4cHQ",
       "displayName": "League of Legends Champions Korea",
       "teamIds": ["t1", "geng", "hle", "dk", "kt", "drx", "dns", "bfx", "ns", "bro"]
     },
     "LPL": {
+      "leaguepediaPage": "https://liquipedia.net/leagueoflegends/LPL",
+      "logoUrl": "https://liquipedia.net/commons/images/thumb/9/91/LPL_2020_Logo.png/900px-LPL_2020_Logo.png",
+      "twitter": "https://x.com/lplenglish",
+      "youtube": "https://www.youtube.com/@LPLOfficial",
       "displayName": "League of Legends Pro League",
       "teamIds": ["al", "blg", "edg", "ig", "jdg", "lgd", "lng", "nip", "omg", "we", "ttg", "tes", "up", "wbg"]
     }
