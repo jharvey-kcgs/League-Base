@@ -1,9 +1,11 @@
 import React from 'react';
-import { StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useTheme } from '../theme/ThemeContext';
-import { getTeamIdsForRegion, getTeam } from '../data/teamsStore';
-import { AppText } from '../components/AppText';
+import { getRegionInfo, getTeamIdsForRegion, getTeam } from '../data/teamsStore';
+import { Section } from '../components/Section';
+import { PlaceholderCard } from '../components/PlaceholderCard';
+import { TwitterTimeline } from '../components/TwitterTimeline';
 import { TeamTile } from '../components/TeamTile';
 import type { Region } from '../types/team';
 import type { RegionStackParamList } from '../navigation/types';
@@ -12,29 +14,38 @@ type Props = NativeStackScreenProps<RegionStackParamList, 'RegionHome'> & { regi
 
 export function RegionHomeScreen({ navigation, region }: Props) {
   const { colors } = useTheme();
+  const info = getRegionInfo(region);
   const teams = getTeamIdsForRegion(region)
     .map((id) => ({ id, team: getTeam(id) }))
     .filter((t): t is { id: string; team: NonNullable<typeof t.team> } => Boolean(t.team));
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Region News / Upcoming Games / Overall Standings — step 4 */}
-      <AppText weight="bold" style={[styles.sectionTitle, { color: colors.accent }]}>
-        TEAMS
-      </AppText>
-      <View style={[styles.sectionRule, { backgroundColor: colors.border }]} />
-      <View style={styles.grid}>
-        {teams.map(({ id, team }) => (
-          <TeamTile key={id} team={team} onPress={() => navigation.navigate('Team', { teamId: id })} />
-        ))}
-      </View>
-    </View>
+    <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
+      <Section title="Region news">
+        <TwitterTimeline url={info.twitter} />
+      </Section>
+
+      <Section title="Upcoming games">
+        <PlaceholderCard label="Match schedule" />
+      </Section>
+
+      <Section title="Overall standings">
+        <PlaceholderCard label="Regular season standings" />
+      </Section>
+
+      <Section title="Teams">
+        <View style={styles.grid}>
+          {teams.map(({ id, team }) => (
+            <TeamTile key={id} team={team} onPress={() => navigation.navigate('Team', { teamId: id })} />
+          ))}
+        </View>
+      </Section>
+      <View style={{ height: 32 }} />
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16 },
-  sectionTitle: { fontSize: 12, letterSpacing: 1, marginTop: 8 },
-  sectionRule: { height: 1, marginTop: 6, marginBottom: 12 },
+  container: { flex: 1 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
 });

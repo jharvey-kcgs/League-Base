@@ -5,6 +5,8 @@ import { safeColor, readableTextOn } from '../utils/colorContrast';
 import { laneFromRole, isSubstitute, compareByLane, laneShortLabel, type Team } from '../types/team';
 import { LaneIcon } from './LaneIcon';
 import { AppText } from './AppText';
+import { Section } from './Section';
+import { PlaceholderCard } from './PlaceholderCard';
 
 /** The full "everything about one team" view — banner, record/matches/VOD
  * placeholders, sorted roster, coaching staff, socials. Shared by HomeScreen
@@ -28,15 +30,15 @@ export function TeamOverview({ team }: { team: Team }) {
         </AppText>
       </View>
 
-      <Section title="Record" colors={colors}>
-        <PlaceholderCard colors={colors} label="Win/loss record" />
+      <Section title="Record">
+        <PlaceholderCard label="Win/loss record" />
       </Section>
 
-      <Section title="Recent & upcoming matches" colors={colors}>
-        <PlaceholderCard colors={colors} label="Match schedule and results" />
+      <Section title="Recent & upcoming matches">
+        <PlaceholderCard label="Match schedule and results" />
       </Section>
 
-      <Section title="Roster" colors={colors}>
+      <Section title="Roster">
         {players.map((p) => (
           <RosterRow key={p.username} name={p.username} role={p.role} colors={colors} />
         ))}
@@ -52,7 +54,7 @@ export function TeamOverview({ team }: { team: Team }) {
         )}
       </Section>
 
-      <Section title="Coaching staff" colors={colors}>
+      <Section title="Coaching staff">
         {team.roster.coaches.map((c) => (
           <View key={c.username} style={styles.coachRow}>
             <View style={styles.coachNameGroup}>
@@ -70,11 +72,11 @@ export function TeamOverview({ team }: { team: Team }) {
         ))}
       </Section>
 
-      <Section title="VODs" colors={colors}>
-        <PlaceholderCard colors={colors} label="English VOD links, per match" />
+      <Section title="VODs">
+        <PlaceholderCard label="English VOD links, per match" />
       </Section>
 
-      <Section title="Follow" colors={colors}>
+      <Section title="Follow">
         <View style={styles.followRow}>
           {team.twitter ? (
             <FollowButton label="Twitter/X" url={team.twitter} colors={colors} accent={teamColor} />
@@ -123,26 +125,6 @@ function TeamLogo({
   );
 }
 
-function Section({
-  title,
-  colors,
-  children,
-}: {
-  title: string;
-  colors: ReturnType<typeof useTheme>['colors'];
-  children: React.ReactNode;
-}) {
-  return (
-    <View style={styles.section}>
-      <AppText weight="bold" style={[styles.sectionTitle, { color: colors.accent }]}>
-        {title.toUpperCase()}
-      </AppText>
-      <View style={[styles.sectionRule, { backgroundColor: colors.border }]} />
-      {children}
-    </View>
-  );
-}
-
 function RosterRow({
   name,
   role,
@@ -164,22 +146,6 @@ function RosterRow({
           {lane ? laneShortLabel(lane) : role}
         </AppText>
       </View>
-    </View>
-  );
-}
-
-function PlaceholderCard({
-  colors,
-  label,
-}: {
-  colors: ReturnType<typeof useTheme>['colors'];
-  label: string;
-}) {
-  return (
-    <View style={[styles.placeholder, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-      <AppText style={{ color: colors.textMuted, fontSize: 13 }}>
-        {label} — coming once the live data layer is wired up.
-      </AppText>
     </View>
   );
 }
@@ -232,9 +198,6 @@ const styles = StyleSheet.create({
   logoFallbackText: { fontSize: 22 },
   bannerRegion: { fontSize: 12, letterSpacing: 1.5, marginTop: 10, opacity: 0.85 },
   bannerName: { fontSize: 24, marginTop: 2 },
-  section: { paddingHorizontal: 20, marginTop: 24 },
-  sectionTitle: { fontSize: 12, letterSpacing: 1 },
-  sectionRule: { height: 1, marginTop: 6, marginBottom: 12 },
   subheading: { fontSize: 12, marginTop: 12, marginBottom: 4 },
   rosterRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 8, gap: 12 },
   rosterText: { flex: 1 },
@@ -245,7 +208,6 @@ const styles = StyleSheet.create({
   coachIcon: { width: 15, height: 15 },
   coachName: { fontSize: 14 },
   coachRole: { fontSize: 12 },
-  placeholder: { borderWidth: 1, borderRadius: 10, padding: 14 },
   followRow: { flexDirection: 'row', gap: 10, flexWrap: 'wrap' },
   followButton: { borderWidth: 1.5, borderRadius: 8, paddingHorizontal: 14, paddingVertical: 8 },
   followButtonText: { fontSize: 13 },

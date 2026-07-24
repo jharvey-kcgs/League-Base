@@ -46,7 +46,7 @@ Then bring in the packages the project actually uses, the Expo-aware way
 ```powershell
 npx expo install @react-navigation/native @react-navigation/native-stack `
   @react-navigation/drawer react-native-gesture-handler react-native-reanimated react-native-worklets `
-  react-native-screens react-native-safe-area-context `
+  react-native-screens react-native-safe-area-context react-native-webview `
   @react-native-async-storage/async-storage @expo/vector-icons expo-font
 ```
 
@@ -65,10 +65,13 @@ a reload.
 | Package | What it's for |
 |---|---|
 | `expo`, `react`, `react-native` | Core framework |
-| `@react-navigation/native`, `@react-navigation/native-stack` | Screen navigation — Onboarding, Home, Settings and its four sub-pages |
-| `react-native-screens`, `react-native-safe-area-context` | Required by React Navigation, not used directly |
+| `@react-navigation/native`, `@react-navigation/native-stack` | Root Stack (Onboarding, the Drawer, Settings + its five sub-pages) and each region's nested Stack |
+| `@react-navigation/drawer` | The main Drawer — My Team + LCS/LEC/LCK/LPL |
+| `react-native-gesture-handler`, `react-native-reanimated`, `react-native-worklets` | Drawer peer dependencies (swipe-to-open, open/close animation). See [Gotcha #7](#gotcha-7-reanimated-4-needs-react-native-worklets-not-just-react-native-reanimatedplugin) if the Babel plugin errors |
+| `react-native-screens`, `react-native-safe-area-context` | Required by React Navigation, and `SafeAreaView` is used directly for header notch/status-bar clearance |
+| `react-native-webview` | Region News' embedded Twitter/X timeline on `RegionHomeScreen` |
 | `@react-native-async-storage/async-storage` | Local storage for favorite team + light/dark mode — the entire app's persisted state runs on this |
-| `@expo/vector-icons` | The cog and hamburger icons in Home's header |
+| `@expo/vector-icons` | The cog, hamburger, and drawer-menu icons |
 | `expo-font` | Font-loading infrastructure for the header typeface — currently a no-op until a font file is actually added, see [Fonts](#6-fonts) |
 
 Nothing here yet for match data, since that layer isn't built — no HTTP
@@ -122,8 +125,9 @@ src/
     OnboardingScreen.tsx            First-launch team picker, grouped by region
     HomeScreen.tsx                  Cog / title / hamburger header + favorite
                                      team's overview (renders TeamOverview)
-    RegionHomeScreen.tsx            Team grid for one region (News/Games/
-                                     Standings land in step 4)
+    RegionHomeScreen.tsx            Region News (Twitter embed), Upcoming
+                                     Games + Overall Standings placeholders,
+                                     and the team grid
     TeamScreen.tsx                  Any team's overview — same TeamOverview
                                      HomeScreen uses, reached via RegionStack
     SettingsScreen.tsx              Nested menu: Profile, Theme, About, FAQ, Data
@@ -144,6 +148,13 @@ src/
                                      TeamPickerGrid and RegionHomeScreen
     TeamPickerGrid.tsx               Team-selection grid (all regions),
                                      used by Onboarding and Settings > Profile
+    Section.tsx                      Eyebrow title + rule — shared by
+                                     TeamOverview and RegionHomeScreen
+    PlaceholderCard.tsx              "Not built yet" card — same, shared
+    TwitterTimeline.tsx              Embedded region Twitter/X timeline via
+                                     WebView + widgets.js (real embed, not a
+                                     link-out — team pages still use the
+                                     link-out FollowButton for now)
     LaneIcon.tsx                     Maps a roster role string to its lane
                                      icon, with a small dot badge for subs
 
@@ -199,23 +210,30 @@ dark mode without needing a separate asset per mode.
 
 ## 6. Fonts
 
-`AppText`'s bold/heavy headers point at **"League"** from FontGet — a
-free-for-commercial-use lookalike inspired by the older LoL logo. This is
-**not** the real in-client Beaufort font, which is a commercial typeface
-(Nick Shinn / Shinn Type Foundry, licensed to Riot via Monotype) that isn't
-legitimately redistributable. The app runs fine on the system font until
-the real file is added:
+`AppText` points at **"Rajdhani"** (Google Fonts, SIL Open Font License —
+genuinely free to bundle). Headers/titles use Bold, body/menu text uses
+Regular — both from this one family, since it actually has a real weight
+range (unlike "League", the earlier choice, which only had one usable
+weight and was headers-only). This is a departure from Beaufort's
+inscriptional-serif character — the real in-client LoL font, still not
+redistributable — but not unfaithful to LoL's actual type system: the
+*other* official font, Spiegel (body text), is itself a plain humanist
+sans. The app runs fine on the system font until the real files are added:
 
-1. Download from https://www.fontget.com/font/league/, check the actual
-   filename inside the zip (likely `League-Regular.ttf`).
-2. Drop it into `assets/fonts/`.
-3. In `src/theme/fonts.ts`, uncomment the "Real version" block, delete the
+1. Download the family from https://fonts.google.com/specimen/Rajdhani
+   ("Download family" — a `.zip` of every weight).
+2. From the zip, you need `Rajdhani-Regular.ttf` and `Rajdhani-Bold.ttf`.
+3. Drop both into `assets/fonts/`.
+4. In `src/theme/fonts.ts`, uncomment the "Real version" block, delete the
    "No-op version" block below it.
-4. Restart `expo start` — font changes need a full reload, not fast refresh.
+5. Restart `expo start` — font changes need a full reload, not fast refresh.
 
-Body text (roster names, FAQ answers) intentionally stays on the system
-font even once League is enabled — League only ships one real weight, no
-bold/heavy, so it's reserved for headers where a display face fits.
+Native headers (the "LCS" / team-name title bar, Settings' sub-page
+titles) don't go through `AppText` at all — React Navigation draws those
+itself, so `theme/fonts.ts` also exports a `headerTitleStyle` that gets
+applied explicitly in every navigator's `screenOptions`. Worth knowing if
+you ever add a new navigator: it needs that same line, or its headers will
+silently stay on the system font even with everything else correct.
 
 ---
 
@@ -308,17 +326,16 @@ config changes don't take effect on a plain reload.
 
 ## 8. Roadmap (intentionally not built yet)
 
-- Region home content beyond the team grid — Region News (Twitter/X embed,
-  region-level `twitter`/`youtube` fields already in `teams.json`),
-  Upcoming Games, Overall Standings. Same placeholder-card treatment
-  `TeamOverview` already uses for Record/Matches/VODs.
+- Upcoming Games and Overall Standings on `RegionHomeScreen` are still
+  `PlaceholderCard`s — Region News (the Twitter embed) is real, but match
+  schedules and standings need the data layer below
 - Live match results, standings, and VOD links — lolesports.com +
   Leaguepedia Cargo API clients, plus a season-calendar-driven cache so
   roster data refreshes more often between splits than mid-season
-- Twitter/X WebView embed for LCS/LEC/LCK teams; "View on Weibo"
-  external-link button for LPL teams (Home already does the external-link
-  version for all three — the embedded-timeline upgrade is Twitter-only)
-- The actual League display font file (Section 6) — not bundled for
-  licensing reasons
+- Twitter/X WebView embed for individual team pages (teams currently use
+  the simpler link-out `FollowButton`, plus "View on Weibo" for LPL teams)
+- The actual Rajdhani font files (Section 6) — not bundled for licensing
+  reasons (nothing legally blocks it, unlike Beaufort — just needs you to
+  download it)
 - TestFlight / production builds — hasn't come up yet; ask when you're
   ready to move past Expo Go testing
