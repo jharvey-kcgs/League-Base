@@ -5,7 +5,7 @@ import { AppText } from './AppText';
 import { PlaceholderCard } from './PlaceholderCard';
 import type { ScheduleEvent } from '../api/lolesportsClient';
 import type { AsyncStatus } from '../hooks/useAsyncData';
-import { formatMatchDate, formatMatchDateTime } from '../utils/formatMatchTime';
+import { formatMatchDate } from '../utils/formatMatchTime';
 
 interface Props {
   status: AsyncStatus;
@@ -13,7 +13,7 @@ interface Props {
   teamCode: string;
 }
 
-export function TeamMatchList({ status, events, teamCode }: Props) {
+export function TeamRecentMatches({ status, events, teamCode }: Props) {
   const { colors } = useTheme();
 
   if (status === 'loading') {
@@ -25,28 +25,20 @@ export function TeamMatchList({ status, events, teamCode }: Props) {
   }
 
   if (status === 'error') {
-    return <PlaceholderCard label="Match schedule — couldn't load right now, pull to refresh in a bit" />;
+    return <PlaceholderCard label="Match results — couldn't load right now, pull to refresh in a bit" />;
   }
 
-  const all = events ?? [];
-  const upcoming = all
-    .filter((e) => e.state !== 'completed')
-    .sort((a, b) => a.startTime.localeCompare(b.startTime))
-    .slice(0, 3);
-  const recent = all
+  const recent = (events ?? [])
     .filter((e) => e.state === 'completed')
     .sort((a, b) => b.startTime.localeCompare(a.startTime))
     .slice(0, 3);
 
-  if (upcoming.length === 0 && recent.length === 0) {
-    return <PlaceholderCard label="No matches scheduled right now" />;
+  if (recent.length === 0) {
+    return <PlaceholderCard label="No completed matches yet this split" />;
   }
 
   return (
     <View style={styles.list}>
-      {upcoming.map((event) => (
-        <MatchRow key={event.match.id} event={event} teamCode={teamCode} />
-      ))}
       {recent.map((event) => (
         <MatchRow key={event.match.id} event={event} teamCode={teamCode} />
       ))}
@@ -58,32 +50,17 @@ function MatchRow({ event, teamCode }: { event: ScheduleEvent; teamCode: string 
   const { colors } = useTheme();
   const self = event.match.teams.find((t) => t.code === teamCode);
   const opponent = event.match.teams.find((t) => t.code !== teamCode);
-  const opponentLabel = opponent?.code ?? '?';
-
-  let rightLabel: string;
-  let rightColor: string;
-  if (event.state === 'inProgress') {
-    rightLabel = 'LIVE';
-    rightColor = colors.accent;
-  } else if (event.state === 'completed') {
-    const outcome = self?.result?.outcome;
-    const score = `${self?.result?.gameWins ?? 0}-${opponent?.result?.gameWins ?? 0}`;
-    const resultLabel = `${outcome === 'win' ? 'W' : outcome === 'loss' ? 'L' : '—'} ${score}`;
-    rightLabel = `${resultLabel} \u00b7 ${formatMatchDate(event.startTime)}`;
-    rightColor = outcome === 'win' ? colors.accent : colors.textMuted;
-  } else {
-    rightLabel = formatMatchDateTime(event.startTime);
-    rightColor = colors.textMuted;
-  }
+  const outcome = self?.result?.outcome;
+  const score = `${self?.result?.gameWins ?? 0}-${opponent?.result?.gameWins ?? 0}`;
+  const resultLabel = `${outcome === 'win' ? 'W' : outcome === 'loss' ? 'L' : '\u2014'} ${score}`;
+  const rightLabel = `${resultLabel} \u00b7 ${formatMatchDate(event.startTime)}`;
 
   return (
     <View style={[styles.row, { backgroundColor: colors.surface, borderColor: colors.border }]}>
       <AppText weight="bold" style={[styles.opponent, { color: colors.text }]}>
-        vs {opponentLabel}
+        vs {opponent?.code ?? '?'}
       </AppText>
-      <AppText weight={event.state === 'inProgress' ? 'bold' : 'regular'} style={{ color: rightColor }}>
-        {rightLabel}
-      </AppText>
+      <AppText style={{ color: outcome === 'win' ? colors.accent : colors.textMuted }}>{rightLabel}</AppText>
     </View>
   );
 }

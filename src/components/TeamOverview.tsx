@@ -9,7 +9,8 @@ import { Section } from './Section';
 import { PlaceholderCard } from './PlaceholderCard';
 import { FollowButton } from './FollowButton';
 import { TeamRecord } from './TeamRecord';
-import { TeamMatchList } from './TeamMatchList';
+import { TeamUpcomingMatches } from './TeamUpcomingMatches';
+import { TeamRecentMatches } from './TeamRecentMatches';
 import { useAsyncData } from '../hooks/useAsyncData';
 import { fetchScheduleForTeam } from '../api/lolesportsClient';
 
@@ -45,8 +46,12 @@ export function TeamOverview({ team }: { team: Team }) {
         <TeamRecord status={schedule.status} events={schedule.data} teamCode={team.lolesportsSlug} />
       </Section>
 
-      <Section title="Recent & upcoming matches">
-        <TeamMatchList status={schedule.status} events={schedule.data} teamCode={team.lolesportsSlug} />
+      <Section title="Upcoming games">
+        <TeamUpcomingMatches status={schedule.status} events={schedule.data} teamCode={team.lolesportsSlug} />
+      </Section>
+
+      <Section title="Recent games">
+        <TeamRecentMatches status={schedule.status} events={schedule.data} teamCode={team.lolesportsSlug} />
       </Section>
 
       <Section title="Roster">

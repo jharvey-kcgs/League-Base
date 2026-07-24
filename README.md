@@ -163,18 +163,21 @@ src/
                                       color) — Twitter/X, Weibo, Instagram,
                                       YouTube, Twitch, Bilibili on team
                                       pages; same set + Discord on regions
-    UpcomingGames.tsx                 Live/upcoming matches for a region —
-                                       real data (lolesportsClient), with
-                                       its own loading/error/empty states
+    UpcomingGames.tsx                 Region's next 5 upcoming/live matches
+                                       — takes already-fetched schedule
+                                       events as props (shares one fetch
+                                       with RecentGames, both driven from
+                                       RegionHomeScreen)
+    RecentGames.tsx                   Region's last 5 completed matches,
+                                       same shared-fetch pattern
     OverallStandings.tsx              Region standings table — real data
                                        (fetchStandingsForRegion)
     TeamRecord.tsx                    Team W/L record — takes already-
                                        fetched schedule events as props
-                                       rather than fetching its own (shares
-                                       one fetch with TeamMatchList, both
-                                       driven from TeamOverview)
-    TeamMatchList.tsx                 Team's upcoming + recent-completed
-                                       matches, same shared-fetch pattern
+                                       (shares one fetch with the two below,
+                                       all driven from TeamOverview)
+    TeamUpcomingMatches.tsx           Team's next 3 upcoming/live matches
+    TeamRecentMatches.tsx             Team's last 3 completed matches
     LaneIcon.tsx                     Maps a roster role string to its lane
                                      icon, with a small dot badge for subs
 

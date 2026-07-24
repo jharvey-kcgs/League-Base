@@ -10,9 +10,10 @@ import { formatMatchDateTime } from '../utils/formatMatchTime';
 interface Props {
   status: AsyncStatus;
   events: ScheduleEvent[] | undefined;
+  teamCode: string;
 }
 
-export function UpcomingGames({ status, events }: Props) {
+export function TeamUpcomingMatches({ status, events, teamCode }: Props) {
   const { colors } = useTheme();
 
   if (status === 'loading') {
@@ -28,9 +29,9 @@ export function UpcomingGames({ status, events }: Props) {
   }
 
   const upcoming = (events ?? [])
-    .filter((e) => e.state === 'unstarted' || e.state === 'inProgress')
+    .filter((e) => e.state !== 'completed')
     .sort((a, b) => a.startTime.localeCompare(b.startTime))
-    .slice(0, 5);
+    .slice(0, 3);
 
   if (upcoming.length === 0) {
     return <PlaceholderCard label="No upcoming matches scheduled right now" />;
@@ -39,21 +40,21 @@ export function UpcomingGames({ status, events }: Props) {
   return (
     <View style={styles.list}>
       {upcoming.map((event) => (
-        <MatchRow key={event.match.id ?? `${event.startTime}-${event.match.teams[0]?.code}`} event={event} />
+        <MatchRow key={event.match.id} event={event} teamCode={teamCode} />
       ))}
     </View>
   );
 }
 
-function MatchRow({ event }: { event: ScheduleEvent }) {
+function MatchRow({ event, teamCode }: { event: ScheduleEvent; teamCode: string }) {
   const { colors } = useTheme();
-  const [teamA, teamB] = event.match.teams;
+  const opponent = event.match.teams.find((t) => t.code !== teamCode);
   const isLive = event.state === 'inProgress';
 
   return (
     <View style={[styles.row, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-      <AppText weight="bold" style={[styles.teams, { color: colors.text }]}>
-        {teamA?.code ?? '?'} vs {teamB?.code ?? '?'}
+      <AppText weight="bold" style={[styles.opponent, { color: colors.text }]}>
+        vs {opponent?.code ?? '?'}
       </AppText>
       <AppText weight={isLive ? 'bold' : 'regular'} style={{ color: isLive ? colors.accent : colors.textMuted }}>
         {isLive ? 'LIVE' : formatMatchDateTime(event.startTime)}
@@ -74,5 +75,5 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 12,
   },
-  teams: { fontSize: 14 },
+  opponent: { fontSize: 14 },
 });

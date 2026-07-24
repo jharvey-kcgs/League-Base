@@ -9,8 +9,11 @@ import { AppHeader } from '../components/AppHeader';
 import { Section } from '../components/Section';
 import { FollowButton } from '../components/FollowButton';
 import { UpcomingGames } from '../components/UpcomingGames';
+import { RecentGames } from '../components/RecentGames';
 import { OverallStandings } from '../components/OverallStandings';
 import { TeamTile } from '../components/TeamTile';
+import { useAsyncData } from '../hooks/useAsyncData';
+import { fetchScheduleForRegion } from '../api/lolesportsClient';
 import type { Region } from '../types/team';
 import type { RegionStackParamList } from '../navigation/types';
 
@@ -23,6 +26,8 @@ export function RegionHomeScreen({ navigation, region }: Props) {
     .map((id) => ({ id, team: getTeam(id) }))
     .filter((t): t is { id: string; team: NonNullable<typeof t.team> } => Boolean(t.team))
     .filter((t) => t.team.active);
+  // Shared by Upcoming and Recent games below — one fetch, not two.
+  const schedule = useAsyncData(() => fetchScheduleForRegion(region.toLowerCase()), [region]);
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
@@ -62,7 +67,11 @@ export function RegionHomeScreen({ navigation, region }: Props) {
         </Section>
 
         <Section title="Upcoming games">
-          <UpcomingGames region={region} />
+          <UpcomingGames status={schedule.status} events={schedule.data} />
+        </Section>
+
+        <Section title="Recent games">
+          <RecentGames status={schedule.status} events={schedule.data} />
         </Section>
 
         <Section title="Overall standings">

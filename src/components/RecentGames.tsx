@@ -5,14 +5,14 @@ import { AppText } from './AppText';
 import { PlaceholderCard } from './PlaceholderCard';
 import type { ScheduleEvent } from '../api/lolesportsClient';
 import type { AsyncStatus } from '../hooks/useAsyncData';
-import { formatMatchDateTime } from '../utils/formatMatchTime';
+import { formatMatchDate } from '../utils/formatMatchTime';
 
 interface Props {
   status: AsyncStatus;
   events: ScheduleEvent[] | undefined;
 }
 
-export function UpcomingGames({ status, events }: Props) {
+export function RecentGames({ status, events }: Props) {
   const { colors } = useTheme();
 
   if (status === 'loading') {
@@ -24,22 +24,22 @@ export function UpcomingGames({ status, events }: Props) {
   }
 
   if (status === 'error') {
-    return <PlaceholderCard label="Match schedule — couldn't load right now, pull to refresh in a bit" />;
+    return <PlaceholderCard label="Match results — couldn't load right now, pull to refresh in a bit" />;
   }
 
-  const upcoming = (events ?? [])
-    .filter((e) => e.state === 'unstarted' || e.state === 'inProgress')
-    .sort((a, b) => a.startTime.localeCompare(b.startTime))
+  const recent = (events ?? [])
+    .filter((e) => e.state === 'completed')
+    .sort((a, b) => b.startTime.localeCompare(a.startTime))
     .slice(0, 5);
 
-  if (upcoming.length === 0) {
-    return <PlaceholderCard label="No upcoming matches scheduled right now" />;
+  if (recent.length === 0) {
+    return <PlaceholderCard label="No completed matches yet this split" />;
   }
 
   return (
     <View style={styles.list}>
-      {upcoming.map((event) => (
-        <MatchRow key={event.match.id ?? `${event.startTime}-${event.match.teams[0]?.code}`} event={event} />
+      {recent.map((event) => (
+        <MatchRow key={event.match.id} event={event} />
       ))}
     </View>
   );
@@ -48,16 +48,23 @@ export function UpcomingGames({ status, events }: Props) {
 function MatchRow({ event }: { event: ScheduleEvent }) {
   const { colors } = useTheme();
   const [teamA, teamB] = event.match.teams;
-  const isLive = event.state === 'inProgress';
+  const scoreA = teamA?.result?.gameWins ?? 0;
+  const scoreB = teamB?.result?.gameWins ?? 0;
 
   return (
     <View style={[styles.row, { backgroundColor: colors.surface, borderColor: colors.border }]}>
       <AppText weight="bold" style={[styles.teams, { color: colors.text }]}>
-        {teamA?.code ?? '?'} vs {teamB?.code ?? '?'}
+        <AppText weight="bold" style={{ color: teamA?.result?.outcome === 'win' ? colors.accent : colors.text }}>
+          {teamA?.code ?? '?'}
+        </AppText>
+        {' '}
+        {scoreA}-{scoreB}
+        {' '}
+        <AppText weight="bold" style={{ color: teamB?.result?.outcome === 'win' ? colors.accent : colors.text }}>
+          {teamB?.code ?? '?'}
+        </AppText>
       </AppText>
-      <AppText weight={isLive ? 'bold' : 'regular'} style={{ color: isLive ? colors.accent : colors.textMuted }}>
-        {isLive ? 'LIVE' : formatMatchDateTime(event.startTime)}
-      </AppText>
+      <AppText style={{ color: colors.textMuted }}>{formatMatchDate(event.startTime)}</AppText>
     </View>
   );
 }
