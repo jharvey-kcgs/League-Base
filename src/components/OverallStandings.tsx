@@ -4,7 +4,7 @@ import { useTheme } from '../theme/ThemeContext';
 import { AppText } from './AppText';
 import { PlaceholderCard } from './PlaceholderCard';
 import { useAsyncData } from '../hooks/useAsyncData';
-import { fetchStandingsForRegion } from '../api/lolesportsClient';
+import { fetchStandingsForRegion, type StandingsRow } from '../api/lolesportsClient';
 import type { Region } from '../types/team';
 
 export function OverallStandings({ region }: { region: Region }) {
@@ -23,11 +23,34 @@ export function OverallStandings({ region }: { region: Region }) {
     return <PlaceholderCard label="Regular season standings — couldn't load right now, pull to refresh in a bit" />;
   }
 
-  const rows = data ?? [];
-  if (rows.length === 0) {
+  const groups = (data ?? []).filter((g) => g.rows.length > 0);
+  if (groups.length === 0) {
     return <PlaceholderCard label="No standings available right now" />;
   }
 
+  // Only show a group label when there's more than one group (LCK's
+  // Legend/Rise, LPL's Ascend/Nirvana) — a single-group league (LCS, LEC)
+  // doesn't need a redundant heading above its one table.
+  const showLabels = groups.length > 1;
+
+  return (
+    <View style={styles.groups}>
+      {groups.map((group) => (
+        <View key={group.name || 'default'} style={styles.groupWrap}>
+          {showLabels && group.name ? (
+            <AppText weight="bold" style={[styles.groupLabel, { color: colors.textMuted }]}>
+              {group.name.toUpperCase()}
+            </AppText>
+          ) : null}
+          <StandingsTable rows={group.rows} />
+        </View>
+      ))}
+    </View>
+  );
+}
+
+function StandingsTable({ rows }: { rows: StandingsRow[] }) {
+  const { colors } = useTheme();
   return (
     <View style={[styles.table, { backgroundColor: colors.surface, borderColor: colors.border }]}>
       {rows.map((row, i) => (
@@ -52,6 +75,9 @@ export function OverallStandings({ region }: { region: Region }) {
 
 const styles = StyleSheet.create({
   loading: { borderWidth: 1, borderRadius: 10, padding: 24, alignItems: 'center' },
+  groups: { gap: 16 },
+  groupWrap: { gap: 6 },
+  groupLabel: { fontSize: 11, letterSpacing: 0.5 },
   table: { borderWidth: 1, borderRadius: 10, overflow: 'hidden' },
   row: {
     flexDirection: 'row',
