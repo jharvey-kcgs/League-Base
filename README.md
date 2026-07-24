@@ -98,12 +98,12 @@ src/
     OnboardingScreen.tsx            First-launch team picker, grouped by region
     HomeScreen.tsx                  Cog / title / hamburger header + favorite
                                      team's roster, coaches, socials
-    SettingsScreen.tsx              Nested menu: Profile, Theme, About, FAQ
-    settings/
-      ProfileSettingsScreen.tsx     Re-run the team picker to change favorite
-      ThemeSettingsScreen.tsx       Light / dark / match-device
-      AboutScreen.tsx               What the app does, where data comes from
-      FAQScreen.tsx                 Common questions
+    SettingsScreen.tsx              Nested menu: Profile, Theme, About, FAQ, Data
+    ProfileSettingsScreen.tsx       Re-run the team picker to change favorite
+    ThemeSettingsScreen.tsx         Light / dark / match-device
+    AboutScreen.tsx                 What the app does, where data comes from
+    FAQScreen.tsx                   Common questions
+    DataSettingsScreen.tsx          Export / import / delete app data
     RegionPlaceholderScreen.tsx     Stand-in for the hamburger target until
                                      real region browsing is built
 

@@ -6,6 +6,7 @@ export type RootStackParamList = {
   SettingsTheme: undefined;
   SettingsAbout: undefined;
   SettingsFAQ: undefined;
+  SettingsData: undefined;
   RegionPlaceholder: undefined;
 };
 

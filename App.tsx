@@ -7,10 +7,11 @@ import { useAppFonts } from './src/theme/fonts';
 import { OnboardingScreen } from './src/screens/OnboardingScreen';
 import { HomeScreen } from './src/screens/HomeScreen';
 import { SettingsScreen } from './src/screens/SettingsScreen';
-import { ProfileSettingsScreen } from './src/screens/settings/ProfileSettingsScreen';
-import { ThemeSettingsScreen } from './src/screens/settings/ThemeSettingsScreen';
-import { AboutScreen } from './src/screens/settings/AboutScreen';
-import { FAQScreen } from './src/screens/settings/FAQScreen';
+import { ProfileSettingsScreen } from './src/screens/ProfileSettingsScreen';
+import { ThemeSettingsScreen } from './src/screens/ThemeSettingsScreen';
+import { AboutScreen } from './src/screens/AboutScreen';
+import { FAQScreen } from './src/screens/FAQScreen';
+import { DataSettingsScreen } from './src/screens/DataSettingsScreen';
 import { RegionPlaceholderScreen } from './src/screens/RegionPlaceholderScreen';
 import type { RootStackParamList } from './src/navigation/types';
 
@@ -51,6 +52,7 @@ function RootNavigator() {
         <Stack.Screen name="SettingsTheme" component={ThemeSettingsScreen} options={{ title: 'Theme' }} />
         <Stack.Screen name="SettingsAbout" component={AboutScreen} options={{ title: 'About' }} />
         <Stack.Screen name="SettingsFAQ" component={FAQScreen} options={{ title: 'FAQ' }} />
+        <Stack.Screen name="SettingsData" component={DataSettingsScreen} options={{ title: 'Data' }} />
         <Stack.Screen
           name="RegionPlaceholder"
           component={RegionPlaceholderScreen}

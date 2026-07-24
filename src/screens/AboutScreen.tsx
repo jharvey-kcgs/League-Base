@@ -1,8 +1,8 @@
 import React from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
-import { useTheme } from '../../theme/ThemeContext';
-import { AppText } from '../../components/AppText';
-import { getTeamsLastUpdated } from '../../data/teamsStore';
+import { useTheme } from '../theme/ThemeContext';
+import { AppText } from '../components/AppText';
+import { getTeamsLastUpdated } from '../data/teamsStore';
 
 const SECTIONS: Array<{ heading: string; body: string }> = [
   {

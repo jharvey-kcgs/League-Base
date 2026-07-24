@@ -1,11 +1,11 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useTheme } from '../../theme/ThemeContext';
-import { getTeam } from '../../data/teamsStore';
-import { TeamPickerGrid } from '../../components/TeamPickerGrid';
-import { AppText } from '../../components/AppText';
-import type { RootStackParamList } from '../../navigation/types';
+import { useTheme } from '../theme/ThemeContext';
+import { getTeam } from '../data/teamsStore';
+import { TeamPickerGrid } from '../components/TeamPickerGrid';
+import { AppText } from '../components/AppText';
+import type { RootStackParamList } from '../navigation/types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'SettingsProfile'>;
 

@@ -1,7 +1,7 @@
 import React from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
-import { useTheme } from '../../theme/ThemeContext';
-import { AppText } from '../../components/AppText';
+import { useTheme } from '../theme/ThemeContext';
+import { AppText } from '../components/AppText';
 
 const FAQS: Array<{ q: string; a: string }> = [
   {
