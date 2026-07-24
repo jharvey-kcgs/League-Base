@@ -1,7 +1,7 @@
 import React from 'react';
 import { Pressable, StyleSheet } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { DrawerActions } from '@react-navigation/native';
+import { DrawerActions, CommonActions } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../theme/ThemeContext';
 import { headerTitleStyle } from '../theme/fonts';
@@ -31,13 +31,22 @@ export function createRegionStack(region: Region) {
         <Stack.Screen name="RegionHome" options={({ navigation }) => ({
           title: region,
           // RegionHome is the root of this nested stack, so there's no
-          // "back" target — without this, tapping into a region leaves no
-          // way back to the drawer at all. DrawerActions.openDrawer()
-          // bubbles up to the nearest Drawer navigator automatically, so
-          // this works without needing a composite navigation prop type.
-          // On the right, matching MyTeam's hamburger placement — left is
-          // intentionally empty here (MyTeam has Settings' cog there, but
-          // RegionHome has no equivalent).
+          // "back" target — without these, tapping into a region leaves no
+          // way to reach Settings or the drawer at all.
+          // CommonActions.navigate({ name: 'Settings' }) bubbles up to the
+          // root Stack automatically (same reasoning as DrawerActions.
+          // openDrawer() below) — Settings lives there, not in this nested
+          // stack, so a plain navigate('Settings') call wouldn't type-check
+          // against RegionStackParamList without this.
+          headerLeft: () => (
+            <Pressable
+              onPress={() => navigation.dispatch(CommonActions.navigate({ name: 'Settings' }))}
+              hitSlop={12}
+              style={styles.headerButton}
+            >
+              <Ionicons name="settings-outline" size={24} color={colors.text} />
+            </Pressable>
+          ),
           headerRight: () => (
             <Pressable
               onPress={() => navigation.dispatch(DrawerActions.openDrawer())}
