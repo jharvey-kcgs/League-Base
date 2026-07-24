@@ -1,49 +1,44 @@
 /**
- * Header/display font: "League" from FontGet (fontget.com/font/league) — a
- * lookalike inspired by the older LoL logo (itself based on Friz Quadrata),
- * NOT the real in-client Beaufort font. Beaufort itself is a commercial
- * typeface (Nick Shinn / Shinn Type Foundry, licensed to Riot via Monotype)
- * and isn't legitimately redistributable, so it's not what's wired up here.
- * "League" is listed free for personal + commercial use, which is why it's
- * the one this file expects.
+ * "Rajdhani" (Google Fonts, SIL Open Font License) — a squarish, technical
+ * sans widely used across esports/gaming dashboard UIs. Genuinely free to
+ * bundle (OFL, not just "personal use" like the free-font-aggregator sites
+ * this project avoided earlier). Has a real weight range, so — unlike
+ * "League" (FontGet), which only had one usable weight and was headers-only
+ * — Rajdhani covers both headers/titles (Bold) and body/menu text
+ * (Regular) from one family.
  *
- * It only ships one real weight (Regular) plus two decorative Inline
- * styles — no bold/heavy — so it's used for headers/titles only. Body text
- * (roster names, FAQ answers, etc.) stays on the system font for
- * readability. Want League forced everywhere instead? Say so and I'll wire
- * fontFamily.regular to it too — the infra already supports it, this file
- * just doesn't turn it on by default.
+ * This is a departure from Beaufort's inscriptional-serif character (the
+ * real in-client LoL font, not redistributable — see git history for that
+ * discussion), but it's not unfaithful: LoL's *other* official font,
+ * Spiegel (body text), is itself a plain humanist sans. Riot's actual
+ * pairing is "one distinctive display face + one quiet workhorse sans" —
+ * Rajdhani plays both roles here instead of splitting them across two
+ * families.
  *
  * To enable:
- *   1. Download "League" from https://www.fontget.com/font/league/
- *   2. Unzip it and check the actual filename — likely League-Regular.ttf,
- *      but confirm against what's in the zip.
- *   3. Drop it into assets/fonts/.
+ *   1. Download the family from https://fonts.google.com/specimen/Rajdhani
+ *      ("Download family" button — a .zip of all weights).
+ *   2. From the zip, you need Rajdhani-Regular.ttf and Rajdhani-Bold.ttf.
+ *   3. Drop both into assets/fonts/.
  *   4. Uncomment the block below and delete the no-op version underneath it.
  */
 
-// --- Real version — uncomment once assets/fonts/League-Regular.(ttf|otf) exists ---
-// import { useFonts } from 'expo-font';
-// export const DISPLAY_FONT_ENABLED = true;
-// export function useAppFonts() {
-//   return useFonts({
-//     'League-Regular': require('../../assets/fonts/League-Regular.ttf'),
-//   });
-// }
-
-// --- No-op version — active until the block above is swapped in ---
-export const DISPLAY_FONT_ENABLED = false;
-export function useAppFonts(): [boolean, Error | null] {
-  return [true, null];
+import { useFonts } from 'expo-font';
+export const DISPLAY_FONT_ENABLED = true;
+export function useAppFonts() {
+  return useFonts({
+    'Rajdhani-Regular': require('../../assets/fonts/Rajdhani-Regular.ttf'),
+    'Rajdhani-Bold': require('../../assets/fonts/Rajdhani-Bold.ttf'),
+  });
 }
 
-/** Headers/titles/eyebrows use the display font once enabled. Body text
- * intentionally stays on the system font — see file header note. */
+/** Headers/titles use Bold, body/menu text uses Regular — both from the
+ * same family now (Rajdhani has a real weight range, unlike League). */
 export const FONT_FAMILY: Record<'regular' | 'medium' | 'bold' | 'heavy', string | undefined> = {
-  regular: undefined,
-  medium: undefined,
-  bold: DISPLAY_FONT_ENABLED ? 'League-Regular' : undefined,
-  heavy: DISPLAY_FONT_ENABLED ? 'League-Regular' : undefined,
+  regular: DISPLAY_FONT_ENABLED ? 'Rajdhani-Regular' : undefined,
+  medium: DISPLAY_FONT_ENABLED ? 'Rajdhani-Regular' : undefined,
+  bold: DISPLAY_FONT_ENABLED ? 'Rajdhani-Bold' : undefined,
+  heavy: DISPLAY_FONT_ENABLED ? 'Rajdhani-Bold' : undefined,
 };
 
 /** React Navigation's native-stack header title is drawn by the library
