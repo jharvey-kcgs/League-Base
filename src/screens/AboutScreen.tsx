@@ -34,10 +34,10 @@ export function AboutScreen() {
     <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
       {SECTIONS.map((s) => (
         <View key={s.heading} style={styles.section}>
-          <AppText weight="bold" style={[styles.heading, { color: colors.accent }]}>
+          <AppText weight="bold" style={[styles.heading, { color: colors.text }]}>
             {s.heading}
           </AppText>
-          <AppText style={[styles.body, { color: colors.text }]}>{s.body}</AppText>
+          <AppText style={[styles.body, { color: colors.textMuted }]}>{s.body}</AppText>
         </View>
       ))}
       <AppText style={[styles.footnote, { color: colors.textMuted }]}>

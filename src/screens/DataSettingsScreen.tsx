@@ -157,7 +157,7 @@ function Section({
 }) {
   return (
     <View style={styles.section}>
-      <AppText weight="bold" style={[styles.sectionTitle, { color: colors.accent }]}>
+      <AppText weight="bold" style={[styles.sectionTitle, { color: colors.text }]}>
         {title.toUpperCase()}
       </AppText>
       <View style={[styles.sectionRule, { backgroundColor: colors.border }]} />

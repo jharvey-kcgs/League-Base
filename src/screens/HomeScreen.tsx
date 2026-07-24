@@ -8,7 +8,7 @@ import { useTheme } from '../theme/ThemeContext';
 import { safeColor, readableTextOn } from '../utils/colorContrast';
 import { LaneIcon } from '../components/LaneIcon';
 import { AppText } from '../components/AppText';
-import { laneFromRole, isSubstitute } from '../types/team';
+import { laneFromRole, isSubstitute, compareByLane, laneShortLabel } from '../types/team';
 import type { RootStackParamList } from '../navigation/types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
@@ -69,7 +69,7 @@ function TeamOverview({
   colors: ReturnType<typeof useTheme>['colors'];
 }) {
   const teamColor = safeColor(team.colors.primary, colors.accent);
-  const players = team.roster.players.filter((p) => !isSubstitute(p.role));
+  const players = team.roster.players.filter((p) => !isSubstitute(p.role)).sort(compareByLane);
   const substitutes = team.roster.players.filter((p) => isSubstitute(p.role));
 
   return (
@@ -216,7 +216,9 @@ function RosterRow({
         <AppText weight="bold" style={[styles.rosterName, { color: colors.text }]}>
           {name}
         </AppText>
-        <AppText style={[styles.rosterRole, { color: colors.textMuted }]}>{lane ?? role}</AppText>
+        <AppText style={[styles.rosterRole, { color: colors.textMuted }]}>
+          {lane ? laneShortLabel(lane) : role}
+        </AppText>
       </View>
     </View>
   );

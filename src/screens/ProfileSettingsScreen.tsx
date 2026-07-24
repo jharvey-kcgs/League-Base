@@ -19,7 +19,7 @@ export function ProfileSettingsScreen({ navigation }: Props) {
         <AppText weight="medium" style={[styles.currentLabel, { color: colors.textMuted }]}>
           Current favorite team
         </AppText>
-        <AppText weight="heavy" style={[styles.currentTeam, { color: colors.accent }]}>
+        <AppText weight="heavy" style={[styles.currentTeam, { color: colors.text }]}>
           {currentTeam?.name ?? 'None set'}
         </AppText>
         <AppText style={[styles.hint, { color: colors.textMuted }]}>
