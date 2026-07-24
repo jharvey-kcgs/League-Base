@@ -31,7 +31,7 @@ export function RegionHomeScreen({ navigation, region }: Props) {
         // Settings lives in the root Stack, not this nested RegionStack —
         // CommonActions.navigate bubbles up automatically to find it, same
         // as DrawerActions.openDrawer() does for the Drawer below.
-        onOpenSettings={() => navigation.dispatch(CommonActions.navigate({ name: 'Settings' }))}
+        onOpenSettings={() => navigation.dispatch(CommonActions.navigate('Settings'))}
         onOpenRegions={() => navigation.dispatch(DrawerActions.openDrawer())}
       />
       <ScrollView style={styles.container}>
