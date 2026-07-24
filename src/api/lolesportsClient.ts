@@ -47,7 +47,10 @@ export interface ScheduleTeam {
 }
 
 export interface ScheduleEvent {
-  id: string;
+  // Unconfirmed whether the real API actually has a top-level id on the
+  // event itself — match.id below is the one documented by every wrapper
+  // library for this API, so that's the one to key React lists on.
+  id?: string;
   startTime: string;
   state: MatchState;
   blockName?: string;

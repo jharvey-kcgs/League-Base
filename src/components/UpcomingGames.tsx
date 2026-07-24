@@ -53,7 +53,7 @@ export function UpcomingGames({ region }: { region: Region }) {
   return (
     <View style={styles.list}>
       {events.map((event) => (
-        <MatchRow key={event.id} event={event} />
+        <MatchRow key={event.match.id ?? `${event.startTime}-${event.match.teams[0]?.code}`} event={event} />
       ))}
     </View>
   );
