@@ -6,12 +6,12 @@ import { laneFromRole, isSubstitute, compareByLane, laneShortLabel, resolveTeamC
 import { LaneIcon } from './LaneIcon';
 import { AppText } from './AppText';
 import { Section } from './Section';
-import { PlaceholderCard } from './PlaceholderCard';
 import { FollowButton } from './FollowButton';
 import { LogoChip } from './LogoChip';
 import { TeamRecord } from './TeamRecord';
 import { TeamUpcomingMatches } from './TeamUpcomingMatches';
 import { TeamRecentMatches } from './TeamRecentMatches';
+import { TeamVods } from './TeamVods';
 import { useAsyncData } from '../hooks/useAsyncData';
 import { fetchScheduleForTeam } from '../api/lolesportsClient';
 
@@ -99,7 +99,7 @@ export function TeamOverview({ team }: { team: Team }) {
       </Section>
 
       <Section title="VODs">
-        <PlaceholderCard label="English VOD links, per match" />
+        <TeamVods status={schedule.status} events={schedule.data} teamCode={team.lolesportsSlug} />
       </Section>
 
       <Section title="Follow">

@@ -178,6 +178,9 @@ src/
                                        all driven from TeamOverview)
     TeamUpcomingMatches.tsx           Team's next 3 upcoming/live matches
     TeamRecentMatches.tsx             Team's last 3 completed matches
+    TeamVods.tsx                       Per-game VOD links for the same last
+                                        3 completed matches — coverage
+                                        varies by region, see Section 8
     LaneIcon.tsx                     Maps a roster role string to its lane
                                      icon, with a small dot badge for subs
 
@@ -197,7 +200,8 @@ src/
     lolesportsClient.ts               lolesports.com unofficial API —
                                        leagues, schedule, live games,
                                        standings (via tournament ID),
-                                       per-team schedule + W/L record.
+                                       per-team schedule + W/L record,
+                                       per-game VOD links (getEventDetails).
                                        Undocumented endpoint, see file
                                        header before touching it
 
@@ -384,10 +388,16 @@ hardcoded.
 
 ## 8. Roadmap (intentionally not built yet)
 
-- VOD links and detailed scoreboards — the one section left on
-  `PlaceholderCard`. Needs the Leaguepedia Cargo API client, not started;
-  lolesports.com's schedule/standings data (now wired up everywhere else)
-  doesn't reliably carry VOD links
+- VODs are wired up (`getEventDetails`, per-game links, last 3 completed
+  matches — same `src/api/lolesportsClient.ts`) but coverage is genuinely
+  inconsistent, not a bug to chase: confirmed LEC has them via
+  lolesports.com, LPL almost certainly won't (Tencent's exclusive
+  broadcast rights mean LPL VODs generally aren't distributed through
+  lolesports.com/YouTube at all). LCS/LCK unconfirmed either way — no
+  completed matches to test against yet at the time this was built.
+  Leaguepedia's Cargo API (`ScoreboardGames.VOD`, community-maintained)
+  is a possible LPL-specific fallback if the gap turns out to matter —
+  not started, and coverage/playability from that source is unverified.
 - A shared, persisted, TTL-aware cache for every `api/` call, plus
   `seasonCalendar.ts` to drive a shorter TTL between splits than
   mid-season (discussed early on, not yet built — right now every fetch

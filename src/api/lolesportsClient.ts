@@ -124,6 +124,77 @@ export async function fetchLive(): Promise<ScheduleEvent[]> {
   return data.data.schedule.events ?? [];
 }
 
+// --- VODs (per-game, via getEventDetails on a completed match) ---
+
+export interface GameVod {
+  gameNumber: number;
+  /** Raw video/VOD ID from the API — build a real URL with vodUrl() below,
+   * don't assume this is already a full link. */
+  parameter: string;
+  /** "youtube" or "twitch" confirmed seen in practice — vodUrl() needs this
+   * to build the right kind of link; a Twitch ID in a YouTube URL (or vice
+   * versa) just gives a broken link. */
+  provider: string;
+}
+
+/** Per-game VOD links for one completed match. Coverage is genuinely
+ * inconsistent — confirmed directly (not just suspected) that lolesports.com
+ * itself has VODs for some regions/matches and not others (LEC yes, LPL no
+ * — Tencent holds exclusive LPL broadcast rights and doesn't distribute
+ * through lolesports.com/YouTube at all, so an empty result there is
+ * expected, not a bug). Returns [] rather than throwing on any failure —
+ * missing VODs for one match shouldn't break the ones that do have them. */
+export async function fetchGameVods(matchId: string): Promise<GameVod[]> {
+  try {
+    const data = await apiGet<{
+      data: {
+        event: {
+          // Confirmed via a real response: games sits under match, not
+          // directly on the event — the original guess had this one level
+          // too shallow, which is why every match came back "no VOD"
+          // despite VODs genuinely existing.
+          match?: {
+            games?: Array<{
+              number: number;
+              vods?: Array<{ parameter: string; locale: string; provider: string }>;
+            }>;
+          };
+        };
+      };
+    }>('getEventDetails', { id: matchId });
+
+    const games = data.data.event?.match?.games ?? [];
+    const result: GameVod[] = [];
+    for (const g of games) {
+      const vods = g.vods ?? [];
+      if (vods.length === 0) continue;
+      // Each game has one VOD per broadcast language (confirmed: German,
+      // Greek, English, Spanish, Hungarian-on-Twitch, Polish, Serbian all
+      // showed up for a single LEC game) — picking vods[0] grabbed
+      // whichever language happened to be listed first, not English.
+      const english = vods.find((v) => v.locale?.toLowerCase().startsWith('en'));
+      const chosen = english ?? vods[0];
+      result.push({ gameNumber: g.number, parameter: chosen.parameter, provider: chosen.provider });
+    }
+    return result;
+  } catch (err) {
+    if (__DEV__) {
+      console.log('[fetchGameVods] threw for', matchId, ':', err);
+    }
+    return [];
+  }
+}
+
+/** The API gives a raw video/VOD ID ("parameter"), not a full URL — and
+ * confirmed the provider genuinely varies per language (YouTube for most,
+ * Twitch seen for at least one), so the URL format has to match. */
+export function vodUrl(parameter: string, provider: string): string {
+  if (provider === 'twitch') {
+    return `https://www.twitch.tv/videos/${parameter}`;
+  }
+  return `https://www.youtube.com/watch?v=${parameter}`;
+}
+
 // --- Per-team schedule (Record W/L, Recent & Upcoming Matches) ---
 
 /** Schedule events involving one specific team, scoped to the CURRENT
