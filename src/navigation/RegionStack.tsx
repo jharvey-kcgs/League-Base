@@ -20,7 +20,7 @@ export function createRegionStack(region: Region) {
         screenOptions={{
           headerStyle: { backgroundColor: colors.surface },
           headerTintColor: colors.text,
-          headerTitleStyle: { ...headerTitleStyle, color: colors.accent },
+          headerTitleStyle: { ...headerTitleStyle, color: colors.accentReadable },
           headerShadowVisible: false,
           contentStyle: { backgroundColor: colors.background },
         }}
@@ -30,8 +30,12 @@ export function createRegionStack(region: Region) {
          * header — see AppHeader.tsx for why: native headerLeft/headerRight
          * get OS-drawn pill/circle chrome we can't reliably center custom
          * content inside. Team still uses the native header below, since a
-         * plain back button + title has no such issue. */}
-        <Stack.Screen name="RegionHome" options={{ headerShown: false }}>
+         * plain back button + title has no such issue.
+         *
+         * title here isn't shown (headerShown: false) but is what Team's
+         * back button falls back to — without it, the back button read the
+         * raw route name "RegionHome" instead of "LCS"/"LEC"/"LCK"/"LPL". */}
+        <Stack.Screen name="RegionHome" options={{ headerShown: false, title: region }}>
           {(props) => <RegionHomeScreen {...props} region={region} />}
         </Stack.Screen>
         <Stack.Screen name="Team" component={TeamScreen} options={{ title: '' }} />
