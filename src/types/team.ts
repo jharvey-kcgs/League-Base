@@ -24,7 +24,7 @@ export interface TeamColors {
 export interface Team {
   name: string;
   region: Region;
-  leaguepediaPage: string;
+  liquipediaPage: string;
   lolesportsSlug: string;
   colors: TeamColors;
   logoUrl: string;
@@ -45,7 +45,7 @@ export interface Team {
 
 export interface RegionInfo {
   displayName: string;
-  leaguepediaPage: string;
+  liquipediaPage: string;
   logoUrl: string;
   twitter: string;
   /** Not every region has every platform — all of these are optional. */

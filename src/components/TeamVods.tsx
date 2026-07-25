@@ -5,13 +5,19 @@ import { AppText } from './AppText';
 import { PlaceholderCard } from './PlaceholderCard';
 import { useAsyncData } from '../hooks/useAsyncData';
 import { fetchGameVods, vodUrl, type ScheduleEvent, type GameVod } from '../api/lolesportsClient';
+import { fetchLeaguepediaVods, type LeaguepediaMatchVods } from '../api/leaguepediaClient';
 import type { AsyncStatus } from '../hooks/useAsyncData';
 import { formatMatchDate } from '../utils/formatMatchTime';
+import type { Region } from '../types/team';
 
 interface Props {
   status: AsyncStatus;
   events: ScheduleEvent[] | undefined;
   teamCode: string;
+  /** Plain display name (teams.json's `name`) — needed for the Leaguepedia
+   * fallback query, which matches on team name, not lolesportsSlug. */
+  teamName: string;
+  region: Region;
 }
 
 interface MatchVods {
@@ -19,7 +25,12 @@ interface MatchVods {
   games: GameVod[];
 }
 
-export function TeamVods({ status, events, teamCode }: Props) {
+interface VodButton {
+  label: string;
+  url: string;
+}
+
+export function TeamVods({ status, events, teamCode, teamName, region }: Props) {
   const { colors } = useTheme();
 
   const recentCompleted = (events ?? [])
@@ -39,6 +50,19 @@ export function TeamVods({ status, events, teamCode }: Props) {
       })
     );
   }, [status, matchIds]);
+
+  const hasAnyLolesportsVod = (vodsQuery.data ?? []).some((m) => m.games.length > 0);
+  // LPL confirmed to have a real, structural gap in lolesports.com's VOD
+  // coverage (Tencent's exclusive broadcast rights) — this fallback is
+  // deliberately scoped to that one region, not attempted generally. Only
+  // actually queries Leaguepedia once we know the primary source came back
+  // completely empty, not preemptively.
+  const shouldTryFallback = region === 'LPL' && vodsQuery.status === 'ready' && !hasAnyLolesportsVod;
+
+  const fallbackQuery = useAsyncData<LeaguepediaMatchVods[]>(async () => {
+    if (!shouldTryFallback) return [];
+    return fetchLeaguepediaVods(teamName, 3);
+  }, [shouldTryFallback, teamName]);
 
   if (status === 'loading') {
     return (
@@ -68,21 +92,68 @@ export function TeamVods({ status, events, teamCode }: Props) {
     return <PlaceholderCard label="VOD links — couldn't load right now, pull to refresh in a bit" />;
   }
 
-  const matchVods = vodsQuery.data ?? [];
+  // Primary source has real VOD data for at least one of the recent
+  // matches — use it, unchanged from before. This is the path for every
+  // region except LPL, and for LPL too if lolesports.com ever does have
+  // something for it.
+  if (hasAnyLolesportsVod) {
+    return (
+      <View style={styles.list}>
+        {(vodsQuery.data ?? []).map(({ event, games }) => (
+          <MatchVodRow
+            key={event.match?.id ?? event.startTime}
+            opponentLabel={`vs ${event.match?.teams?.find((t) => !!t && t.code !== teamCode)?.code ?? '?'}`}
+            dateLabel={formatMatchDate(event.startTime)}
+            buttons={dedupeLolesportsVods(games)}
+          />
+        ))}
+      </View>
+    );
+  }
+
+  // Primary source empty — for LPL, try the Leaguepedia fallback.
+  if (shouldTryFallback) {
+    if (fallbackQuery.status === 'loading') {
+      return (
+        <View style={[styles.loading, { borderColor: colors.border }]}>
+          <ActivityIndicator color={colors.accent} />
+        </View>
+      );
+    }
+    const fallbackMatches = fallbackQuery.data ?? [];
+    if (fallbackMatches.length > 0) {
+      return (
+        <View style={styles.list}>
+          <AppText style={[styles.sourceNote, { color: colors.textMuted }]}>
+            lolesports.com doesn't carry LPL VODs — showing community-sourced links from Leaguepedia instead.
+          </AppText>
+          {fallbackMatches.map((m) => (
+            <MatchVodRow
+              key={m.matchId}
+              opponentLabel={`vs ${m.opponent}`}
+              dateLabel={formatMatchDate(m.dateTime)}
+              buttons={dedupeLeaguepediaVods(m.games)}
+            />
+          ))}
+        </View>
+      );
+    }
+    // Fallback also came up empty — fall through to the same "no VOD"
+    // per-match display used everywhere else, rather than a special case.
+  }
 
   return (
     <View style={styles.list}>
-      {matchVods.map(({ event, games }) => (
-        <MatchVodRow key={event.match?.id ?? event.startTime} event={event} games={games} teamCode={teamCode} />
+      {recentCompleted.map((event) => (
+        <MatchVodRow
+          key={event.match?.id ?? event.startTime}
+          opponentLabel={`vs ${event.match?.teams?.find((t) => !!t && t.code !== teamCode)?.code ?? '?'}`}
+          dateLabel={formatMatchDate(event.startTime)}
+          buttons={[]}
+        />
       ))}
     </View>
   );
-}
-
-interface VodButton {
-  label: string;
-  parameter: string;
-  provider: string;
 }
 
 /** LEC confirmed to publish one combined recording covering every game in
@@ -92,27 +163,44 @@ interface VodButton {
  * specific region's behavior, means this is correct automatically for
  * whichever way any given region turns out to publish VODs, with nothing
  * region-specific to maintain. */
-function dedupeVods(games: GameVod[]): VodButton[] {
+function dedupeLolesportsVods(games: GameVod[]): VodButton[] {
   if (games.length === 0) return [];
   const uniqueParams = new Set(games.map((g) => g.parameter));
   if (games.length > 1 && uniqueParams.size === 1) {
-    return [{ label: 'Series', parameter: games[0].parameter, provider: games[0].provider }];
+    return [{ label: 'Series', url: vodUrl(games[0].parameter, games[0].provider) }];
   }
-  return games.map((g) => ({ label: `Game ${g.gameNumber}`, parameter: g.parameter, provider: g.provider }));
+  return games.map((g) => ({ label: `Game ${g.gameNumber}`, url: vodUrl(g.parameter, g.provider) }));
 }
 
-function MatchVodRow({ event, games, teamCode }: { event: ScheduleEvent; games: GameVod[]; teamCode: string }) {
+/** Same dedup reasoning as dedupeLolesportsVods, applied to Leaguepedia's
+ * shape (already-full URLs, no separate provider field to build one from). */
+function dedupeLeaguepediaVods(games: LeaguepediaMatchVods['games']): VodButton[] {
+  if (games.length === 0) return [];
+  const uniqueUrls = new Set(games.map((g) => g.url));
+  if (games.length > 1 && uniqueUrls.size === 1) {
+    return [{ label: 'Series', url: games[0].url }];
+  }
+  return games.map((g) => ({ label: `Game ${g.gameNumber}`, url: g.url }));
+}
+
+function MatchVodRow({
+  opponentLabel,
+  dateLabel,
+  buttons,
+}: {
+  opponentLabel: string;
+  dateLabel: string;
+  buttons: VodButton[];
+}) {
   const { colors } = useTheme();
-  const opponent = event.match?.teams?.find((t) => !!t && t.code !== teamCode);
-  const buttons = dedupeVods(games);
 
   return (
     <View style={[styles.matchBlock, { backgroundColor: colors.surface, borderColor: colors.border }]}>
       <View style={styles.matchHeader}>
         <AppText weight="bold" style={{ color: colors.text }}>
-          vs {opponent?.code ?? '?'}
+          {opponentLabel}
         </AppText>
-        <AppText style={{ color: colors.textMuted }}>{formatMatchDate(event.startTime)}</AppText>
+        <AppText style={{ color: colors.textMuted }}>{dateLabel}</AppText>
       </View>
       {buttons.length === 0 ? (
         <AppText style={[styles.noVod, { color: colors.textMuted }]}>No VOD available for this match</AppText>
@@ -121,7 +209,7 @@ function MatchVodRow({ event, games, teamCode }: { event: ScheduleEvent; games: 
           {buttons.map((b) => (
             <Pressable
               key={b.label}
-              onPress={() => Linking.openURL(vodUrl(b.parameter, b.provider))}
+              onPress={() => Linking.openURL(b.url)}
               style={({ pressed }) => [
                 styles.gameButton,
                 { borderColor: colors.accent, opacity: pressed ? 0.7 : 1 },
@@ -141,6 +229,7 @@ function MatchVodRow({ event, games, teamCode }: { event: ScheduleEvent; games: 
 const styles = StyleSheet.create({
   loading: { borderWidth: 1, borderRadius: 10, padding: 24, alignItems: 'center' },
   list: { gap: 10 },
+  sourceNote: { fontSize: 12, marginBottom: 2 },
   matchBlock: { borderWidth: 1, borderRadius: 10, padding: 14, gap: 8 },
   matchHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   noVod: { fontSize: 12 },

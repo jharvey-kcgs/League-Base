@@ -99,7 +99,13 @@ export function TeamOverview({ team }: { team: Team }) {
       </Section>
 
       <Section title="VODs">
-        <TeamVods status={schedule.status} events={schedule.data} teamCode={team.lolesportsSlug} />
+        <TeamVods
+          status={schedule.status}
+          events={schedule.data}
+          teamCode={team.lolesportsSlug}
+          teamName={team.name}
+          region={team.region}
+        />
       </Section>
 
       <Section title="Follow">
