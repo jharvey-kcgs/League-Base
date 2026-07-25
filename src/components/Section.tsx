@@ -7,7 +7,7 @@ export function Section({ title, children }: { title: string; children: React.Re
   const { colors } = useTheme();
   return (
     <View style={styles.section}>
-      <AppText weight="bold" style={[styles.sectionTitle, { color: colors.accent }]}>
+      <AppText weight="bold" style={[styles.sectionTitle, { color: colors.accentReadable }]}>
         {title.toUpperCase()}
       </AppText>
       <View style={[styles.sectionRule, { backgroundColor: colors.border }]} />

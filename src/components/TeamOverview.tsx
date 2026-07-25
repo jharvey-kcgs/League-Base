@@ -1,13 +1,14 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Image, ScrollView, StyleSheet, View } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
-import { safeColor, readableTextOn } from '../utils/colorContrast';
-import { laneFromRole, isSubstitute, compareByLane, laneShortLabel, type Team } from '../types/team';
+import { ensureUIContrastOn, readableTextOn } from '../utils/colorContrast';
+import { laneFromRole, isSubstitute, compareByLane, laneShortLabel, resolveTeamColor, type Team } from '../types/team';
 import { LaneIcon } from './LaneIcon';
 import { AppText } from './AppText';
 import { Section } from './Section';
 import { PlaceholderCard } from './PlaceholderCard';
 import { FollowButton } from './FollowButton';
+import { LogoChip } from './LogoChip';
 import { TeamRecord } from './TeamRecord';
 import { TeamUpcomingMatches } from './TeamUpcomingMatches';
 import { TeamRecentMatches } from './TeamRecentMatches';
@@ -20,7 +21,16 @@ import { fetchScheduleForTeam } from '../api/lolesportsClient';
  * fixes and polish only need to happen in one place. */
 export function TeamOverview({ team }: { team: Team }) {
   const { colors } = useTheme();
-  const teamColor = safeColor(team.colors.primary, colors.accent);
+  const rawColor = resolveTeamColor(team, colors.accent);
+  // Several teams are white- or black-branded — filling the banner with
+  // that raw color made it disappear into the page background entirely in
+  // one mode or the other (a big "blank" banner, not just faint text).
+  const teamColor = ensureUIContrastOn(rawColor, colors.background);
+  // Computed fresh against the ACTUAL (possibly-adjusted) fill above, not
+  // colors.accentText — that's derived from the app-wide FAVORITE team's
+  // raw color, which doesn't match what's actually painted on this banner
+  // when viewing a different team's page (reached via region browsing).
+  const bannerTextColor = readableTextOn(teamColor);
   const players = team.roster.players.filter((p) => !isSubstitute(p.role)).sort(compareByLane);
   const substitutes = team.roster.players.filter((p) => isSubstitute(p.role));
   // Shared by the Record and Matches sections below — one fetch, not two,
@@ -33,11 +43,11 @@ export function TeamOverview({ team }: { team: Team }) {
   return (
     <ScrollView style={styles.container}>
       <View style={[styles.banner, { backgroundColor: teamColor }]}>
-        <TeamLogo url={team.logoUrl} name={team.name} ringColor={teamColor} />
-        <AppText weight="bold" style={[styles.bannerRegion, { color: colors.accentText }]}>
+        <LogoChip url={team.logoUrl} name={team.name} ringColor={rawColor} size={96} />
+        <AppText weight="bold" style={[styles.bannerRegion, { color: bannerTextColor }]}>
           {team.region}
         </AppText>
-        <AppText weight="heavy" style={[styles.bannerName, { color: colors.accentText }]}>
+        <AppText weight="heavy" style={[styles.bannerName, { color: bannerTextColor }]}>
           {team.name}
         </AppText>
       </View>
@@ -119,37 +129,6 @@ export function TeamOverview({ team }: { team: Team }) {
   );
 }
 
-const LOGO_CHIP_COLOR = '#0B0B0D';
-
-function TeamLogo({
-  url,
-  name,
-  ringColor,
-}: {
-  url: string;
-  name: string;
-  ringColor: string;
-}) {
-  const [failed, setFailed] = useState(false);
-  const fallbackTint = readableTextOn(LOGO_CHIP_COLOR);
-  return (
-    <View style={[styles.logoChip, { borderColor: ringColor }]}>
-      {!url || failed ? (
-        <AppText weight="heavy" style={[styles.logoFallbackText, { color: fallbackTint }]}>
-          {name.slice(0, 2).toUpperCase()}
-        </AppText>
-      ) : (
-        <Image
-          source={{ uri: url }}
-          style={styles.logo}
-          resizeMode="contain"
-          onError={() => setFailed(true)}
-        />
-      )}
-    </View>
-  );
-}
-
 function RosterRow({
   name,
   role,
@@ -178,23 +157,6 @@ function RosterRow({
 const styles = StyleSheet.create({
   container: { flex: 1 },
   banner: { paddingTop: 32, paddingBottom: 24, alignItems: 'center' },
-  logoChip: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
-    borderWidth: 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-    // Fixed dark backdrop — deliberately not tied to team color or
-    // light/dark mode. Team logos are Liquipedia's "darkmode" variants
-    // (built to sit on a dark background), and several team colors are
-    // close enough in hue/lightness to their own logo that the logo
-    // nearly disappears when the banner itself is the backdrop. A
-    // constant dark chip guarantees contrast regardless of team color.
-    backgroundColor: LOGO_CHIP_COLOR,
-  },
-  logo: { width: 64, height: 64 },
-  logoFallbackText: { fontSize: 22 },
   bannerRegion: { fontSize: 12, letterSpacing: 1.5, marginTop: 10, opacity: 0.85 },
   bannerName: { fontSize: 24, marginTop: 2 },
   subheading: { fontSize: 12, marginTop: 12, marginBottom: 4 },

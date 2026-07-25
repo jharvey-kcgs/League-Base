@@ -25,7 +25,7 @@ export function AppHeader({ title, onOpenSettings, onOpenRegions }: Props) {
       <Pressable onPress={onOpenSettings} hitSlop={12} style={styles.headerButton}>
         <Ionicons name="settings-outline" size={24} color={colors.text} />
       </Pressable>
-      <AppText weight="heavy" style={[styles.headerTitle, { color: colors.accent }]}>
+      <AppText weight="heavy" style={[styles.headerTitle, { color: colors.accentReadable }]}>
         {title.toUpperCase()}
       </AppText>
       <Pressable onPress={onOpenRegions} hitSlop={12} style={styles.headerButton}>

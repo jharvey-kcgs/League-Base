@@ -1,4 +1,4 @@
-import { readableTextOn, safeColor } from '../utils/colorContrast';
+import { readableTextOn, safeColor, ensureReadableOn } from '../utils/colorContrast';
 import type { Team } from '../types/team';
 
 export interface ThemeColors {
@@ -8,6 +8,15 @@ export interface ThemeColors {
   textMuted: string;
   border: string;
   accent: string;
+  /** Contrast-safe version of accent for when it's used AS TEXT (Section
+   * titles, header titles) rather than as a border/ring, where the raw
+   * accent still looks best. A pastel team color (LYON's tan-gold, e.g.)
+   * can fail WCAG contrast against a light background exactly as easily as
+   * a very dark team color fails against a dark one — this nudges
+   * lightness (preserving hue) just enough to pass, rather than accepting
+   * unreadable text or flipping to a generic black/white that no longer
+   * reads as "that team's color." */
+  accentReadable: string;
   accentText: string;
 }
 
@@ -41,5 +50,10 @@ export function deriveTheme(team: Team | undefined, mode: 'light' | 'dark'): The
   const base = mode === 'dark' ? DARK_BASE : LIGHT_BASE;
   const fallback = mode === 'dark' ? NEUTRAL_ACCENT_DARK : NEUTRAL_ACCENT_LIGHT;
   const accent = safeColor(team?.colors.primary, fallback);
-  return { ...base, accent, accentText: readableTextOn(accent) };
+  return {
+    ...base,
+    accent,
+    accentReadable: ensureReadableOn(accent, base.background),
+    accentText: readableTextOn(accent),
+  };
 }

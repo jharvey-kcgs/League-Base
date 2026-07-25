@@ -1,3 +1,5 @@
+import { safeColor } from '../utils/colorContrast';
+
 export type Region = 'LCS' | 'LEC' | 'LCK' | 'LPL';
 
 export type Lane = 'Top Lane' | 'Jungle' | 'Mid Lane' | 'ADC' | 'Support';
@@ -126,4 +128,19 @@ export function compareByLane(a: RosterPlayer, b: RosterPlayer): number {
   const rankA = laneA ? LANE_ORDER[laneA] : 5;
   const rankB = laneB ? LANE_ORDER[laneB] : 5;
   return rankA - rankB;
+}
+
+/** A team's raw `colors.primary` is its actual brand color — for several
+ * teams (a monochrome white or black logo) that's not usable as a UI
+ * accent at all, which is what `colors.accent` is for: an explicit,
+ * curated override for exactly those teams. Prefers accent when a team has
+ * set one, falls back to primary otherwise. Callers still need to run the
+ * result through ensureUIContrastOn/ensureReadableOn for the specific
+ * background it'll render against — this only picks WHICH color, not
+ * whether it's readable in the current mode. */
+export function resolveTeamColor(team: Team, fallback = '#4B4B4B'): string {
+  if (team.colors.accent && /^#[0-9A-Fa-f]{3,6}$/.test(team.colors.accent.trim())) {
+    return team.colors.accent.trim();
+  }
+  return safeColor(team.colors.primary, fallback);
 }
