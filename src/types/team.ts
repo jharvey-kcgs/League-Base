@@ -32,7 +32,7 @@ export interface Team {
   /** Not every team has every platform — all of these are optional. */
   weibo?: string;
   instagram?: string;
-  youtubeChannel: string;
+  youtubeChannel?: string;
   twitch?: string;
   bilibili?: string;
   active: boolean;
