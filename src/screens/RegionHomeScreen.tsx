@@ -27,7 +27,7 @@ export function RegionHomeScreen({ navigation, region }: Props) {
     .filter((t): t is { id: string; team: NonNullable<typeof t.team> } => Boolean(t.team))
     .filter((t) => t.team.active);
   // Shared by Upcoming and Recent games below — one fetch, not two.
-  const schedule = useAsyncData(() => fetchScheduleForRegion(region.toLowerCase()), [region]);
+  const schedule = useAsyncData(() => fetchScheduleForRegion(region), [region]);
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>

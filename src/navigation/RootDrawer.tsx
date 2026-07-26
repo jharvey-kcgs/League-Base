@@ -12,6 +12,7 @@ const LCSStack = createRegionStack('LCS');
 const LECStack = createRegionStack('LEC');
 const LCKStack = createRegionStack('LCK');
 const LPLStack = createRegionStack('LPL');
+const CBLOLStack = createRegionStack('CBLOL');
 
 export function RootDrawer() {
   const { colors } = useTheme();
@@ -22,7 +23,7 @@ export function RootDrawer() {
         headerShown: false, // each tab's own screen/stack draws its own header
         drawerType: 'front',
         drawerStyle: { backgroundColor: colors.surface },
-        drawerActiveTintColor: colors.accent,
+        drawerActiveTintColor: colors.accentReadable,
         drawerInactiveTintColor: colors.textMuted,
         drawerActiveBackgroundColor: colors.background,
         // Drawer item labels are rendered by the library itself (not
@@ -36,6 +37,7 @@ export function RootDrawer() {
       <Drawer.Screen name="LEC" component={LECStack} />
       <Drawer.Screen name="LCK" component={LCKStack} />
       <Drawer.Screen name="LPL" component={LPLStack} />
+      <Drawer.Screen name="CBLOL" component={CBLOLStack} />
     </Drawer.Navigator>
   );
 }

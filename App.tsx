@@ -22,13 +22,14 @@ import type { RootStackParamList } from './src/navigation/types';
 
 // Drawer route name -> human-readable label, for the back-button title on
 // whatever gets pushed on top (Settings). Region tabs use their own name
-// as-is (LCS/LEC/LCK/LPL); only MyTeam needs an actual translation.
+// as-is (LCS/LEC/LCK/LPL/CBLOL); only MyTeam needs an actual translation.
 const DRAWER_TAB_LABELS: Record<string, string> = {
   MyTeam: 'My Team',
   LCS: 'LCS',
   LEC: 'LEC',
   LCK: 'LCK',
   LPL: 'LPL',
+  CBLOL: 'CBLOL',
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -50,7 +51,7 @@ function RootNavigator() {
         screenOptions={{
           headerStyle: { backgroundColor: colors.surface },
           headerTintColor: colors.text,
-          headerTitleStyle: { ...headerTitleStyle, color: colors.accent },
+          headerTitleStyle: { ...headerTitleStyle, color: colors.accentReadable },
           headerShadowVisible: false,
           contentStyle: { backgroundColor: colors.background },
         }}

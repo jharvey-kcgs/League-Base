@@ -13,6 +13,7 @@
  */
 
 import { withCache } from './cache';
+import type { Region } from '../types/team';
 
 const API_BASE = 'https://esports-api.lolesports.com/persisted/gw';
 const API_KEY = '0TvQnueqKa5mxJntVWt0w4LpLfEkrV1Ta8rQBb9Z';
@@ -107,13 +108,35 @@ export async function fetchLeagues(): Promise<LeagueSummary[]> {
   return leaguesCache;
 }
 
-/** Resolves a region slug ("lcs", "lec", "lck", "lpl") to the lolesports
- * API's internal league ID by matching against the live getLeagues list —
- * deliberately not hardcoded, since this API is undocumented and IDs
- * aren't something to bake in without a way to verify them stay correct. */
-export async function resolveLeagueId(regionSlug: string): Promise<string | null> {
+/** Our internal Region code doesn't always match lolesports.com's actual
+ * league slug — confirmed via a real failure, not a guess: CBLOL's real
+ * slug is "cblol-brazil", not the "cblol" a naive lowercase of the region
+ * code produces (which is what every function here used to do, LCS/LEC/
+ * LCK/LPL only worked because their real slugs happen to equal their
+ * lowercased region code). Any future region with a similarly non-obvious
+ * slug goes here too, rather than another blind guess. */
+const REGION_SLUG_OVERRIDES: Partial<Record<Region, string>> = {
+  CBLOL: 'cblol-brazil',
+};
+
+function lolesportsSlugForRegion(region: Region): string {
+  return REGION_SLUG_OVERRIDES[region] ?? region.toLowerCase();
+}
+
+/** Resolves a Region to the lolesports API's internal league ID by
+ * matching against the live getLeagues list — deliberately not hardcoded,
+ * since this API is undocumented and IDs aren't something to bake in
+ * without a way to verify they stay correct. */
+export async function resolveLeagueId(region: Region): Promise<string | null> {
+  const regionSlug = lolesportsSlugForRegion(region);
   const leagues = await fetchLeagues();
   const match = leagues.find((l) => l.slug.toLowerCase() === regionSlug.toLowerCase());
+
+  if (!match && __DEV__) {
+    console.log('[resolveLeagueId] no match for', JSON.stringify(regionSlug));
+    console.log('[resolveLeagueId] available leagues:', JSON.stringify(leagues, null, 2));
+  }
+
   return match?.id ?? null;
 }
 
@@ -137,10 +160,10 @@ export async function fetchSchedule(leagueId: string): Promise<ScheduleEvent[]> 
 }
 
 /** Convenience wrapper: schedule events for a region, resolving the league
- * ID first. Returns an empty array (not a throw) if the region slug
- * doesn't resolve, so a screen can show "no data" rather than crash. */
-export async function fetchScheduleForRegion(regionSlug: string): Promise<ScheduleEvent[]> {
-  const leagueId = await resolveLeagueId(regionSlug);
+ * ID first. Returns an empty array (not a throw) if the region doesn't
+ * resolve, so a screen can show "no data" rather than crash. */
+export async function fetchScheduleForRegion(region: Region): Promise<ScheduleEvent[]> {
+  const leagueId = await resolveLeagueId(region);
   if (!leagueId) return [];
   return fetchSchedule(leagueId);
 }
@@ -235,8 +258,8 @@ export function vodUrl(parameter: string, provider: string): string {
  * silently became its cumulative record across every split played this
  * year (e.g. G2 showing 9-2 on the first day of a new split, when it
  * should read 0-0 until they'd actually played a game in it). */
-export async function fetchScheduleForTeam(regionSlug: string, teamCode: string): Promise<ScheduleEvent[]> {
-  const leagueId = await resolveLeagueId(regionSlug);
+export async function fetchScheduleForTeam(region: Region, teamCode: string): Promise<ScheduleEvent[]> {
+  const leagueId = await resolveLeagueId(region);
   if (!leagueId) return [];
 
   // The schedule itself is essential — if this fails, there's genuinely
@@ -402,8 +425,8 @@ export async function fetchStandings(tournamentId: string): Promise<StandingsGro
 /** Convenience wrapper: resolves league -> current tournament -> standings
  * in one call. Returns an empty array (not a throw) at any step that comes
  * up empty, so a screen can show "no data" rather than crash. */
-export async function fetchStandingsForRegion(regionSlug: string): Promise<StandingsGroup[]> {
-  const leagueId = await resolveLeagueId(regionSlug);
+export async function fetchStandingsForRegion(region: Region): Promise<StandingsGroup[]> {
+  const leagueId = await resolveLeagueId(region);
   if (!leagueId) return [];
   const tournaments = await fetchTournamentsForLeague(leagueId);
   const current = pickCurrentTournament(tournaments);

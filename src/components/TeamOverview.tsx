@@ -36,7 +36,7 @@ export function TeamOverview({ team }: { team: Team }) {
   // Shared by the Record and Matches sections below — one fetch, not two,
   // since both need the same underlying schedule data.
   const schedule = useAsyncData(
-    () => fetchScheduleForTeam(team.region.toLowerCase(), team.lolesportsSlug),
+    () => fetchScheduleForTeam(team.region, team.lolesportsSlug),
     [team.region, team.lolesportsSlug]
   );
 

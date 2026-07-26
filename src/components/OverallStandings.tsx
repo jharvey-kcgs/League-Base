@@ -9,7 +9,7 @@ import type { Region } from '../types/team';
 
 export function OverallStandings({ region }: { region: Region }) {
   const { colors } = useTheme();
-  const { status, data } = useAsyncData(() => fetchStandingsForRegion(region.toLowerCase()), [region]);
+  const { status, data } = useAsyncData(() => fetchStandingsForRegion(region), [region]);
 
   if (status === 'loading') {
     return (

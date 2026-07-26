@@ -105,13 +105,15 @@ export function TeamVods({ status, events, teamCode, region }: Props) {
   );
 }
 
-/** LEC confirmed to publish one combined recording covering every game in
- * a series (all "Game N" buttons pointing at the identical video) rather
- * than separate per-game clips — LCS/LCK unconfirmed either way as of this
- * writing. Deduplicating by the actual video ID, rather than assuming a
- * specific region's behavior, means this is correct automatically for
- * whichever way any given region turns out to publish VODs, with nothing
- * region-specific to maintain. */
+/** Confirmed to genuinely vary by region, not just a hypothesis: LEC
+ * publishes one combined recording covering every game in a series (all
+ * "Game N" buttons pointing at the identical video), while CBLOL uploads a
+ * separate VOD per individual game (a 2-1 series gets 3 distinct videos).
+ * LCS/LCK/LPL/LCP unconfirmed either way as of this writing. Deduplicating
+ * by the actual video ID, rather than assuming a specific region's
+ * behavior, means this is correct automatically for whichever way any
+ * given region turns out to publish VODs, with nothing region-specific to
+ * maintain — both confirmed cases above needed zero special-casing. */
 function dedupeLolesportsVods(games: GameVod[]): VodButton[] {
   if (games.length === 0) return [];
   const uniqueParams = new Set(games.map((g) => g.parameter));
