@@ -105,7 +105,9 @@ export async function fetchSchedule(leagueId: string): Promise<ScheduleEvent[]> 
   // event.match exists, so filtering these out here — once, at the source —
   // protects all of them instead of needing the same guard repeated in
   // every single component.
-  return events.filter((e) => e.match && Array.isArray(e.match.teams));
+  const filtered = events.filter((e) => e.match && Array.isArray(e.match.teams));
+
+  return filtered;
 }
 
 /** Convenience wrapper: schedule events for a region, resolving the league
