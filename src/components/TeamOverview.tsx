@@ -103,7 +103,6 @@ export function TeamOverview({ team }: { team: Team }) {
           status={schedule.status}
           events={schedule.data}
           teamCode={team.lolesportsSlug}
-          teamName={team.name}
           region={team.region}
         />
       </Section>

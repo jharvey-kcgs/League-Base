@@ -5,7 +5,6 @@ import { AppText } from './AppText';
 import { PlaceholderCard } from './PlaceholderCard';
 import { useAsyncData } from '../hooks/useAsyncData';
 import { fetchGameVods, vodUrl, type ScheduleEvent, type GameVod } from '../api/lolesportsClient';
-import { fetchLeaguepediaVods, type LeaguepediaMatchVods } from '../api/leaguepediaClient';
 import type { AsyncStatus } from '../hooks/useAsyncData';
 import { formatMatchDate } from '../utils/formatMatchTime';
 import type { Region } from '../types/team';
@@ -14,9 +13,6 @@ interface Props {
   status: AsyncStatus;
   events: ScheduleEvent[] | undefined;
   teamCode: string;
-  /** Plain display name (teams.json's `name`) — needed for the Leaguepedia
-   * fallback query, which matches on team name, not lolesportsSlug. */
-  teamName: string;
   region: Region;
 }
 
@@ -30,8 +26,24 @@ interface VodButton {
   url: string;
 }
 
-export function TeamVods({ status, events, teamCode, teamName, region }: Props) {
+export function TeamVods({ status, events, teamCode, region }: Props) {
   const { colors } = useTheme();
+
+  // LPL has a real, structural VOD gap (Tencent's exclusive broadcast
+  // rights mean lolesports.com never has them) — a Leaguepedia Cargo API
+  // fallback was built and genuinely worked, but Leaguepedia's rate
+  // limiting turned out aggressive enough that a handful of test requests
+  // locked out an entire network for 8+ hours, confirmed with a plain
+  // browser hitting the same endpoint directly (not a React Native/fetch
+  // quirk — a real, external rate limit). A real user innocently browsing
+  // a few LPL pages could trip the same wall with no way for the app to
+  // warn them or recover in the moment. Turned off entirely rather than
+  // risk that — see FAQScreen.tsx and README Section 8 for the reasoning,
+  // and leaguepediaClient.ts (unused, not deleted) if this ever gets
+  // revisited behind real request caching.
+  if (region === 'LPL') {
+    return <PlaceholderCard label="VODs aren't available for LPL - see the FAQ page for why" permanent />;
+  }
 
   const recentCompleted = (events ?? [])
     .filter((e) => e.state === 'completed')
@@ -50,19 +62,6 @@ export function TeamVods({ status, events, teamCode, teamName, region }: Props) 
       })
     );
   }, [status, matchIds]);
-
-  const hasAnyLolesportsVod = (vodsQuery.data ?? []).some((m) => m.games.length > 0);
-  // LPL confirmed to have a real, structural gap in lolesports.com's VOD
-  // coverage (Tencent's exclusive broadcast rights) — this fallback is
-  // deliberately scoped to that one region, not attempted generally. Only
-  // actually queries Leaguepedia once we know the primary source came back
-  // completely empty, not preemptively.
-  const shouldTryFallback = region === 'LPL' && vodsQuery.status === 'ready' && !hasAnyLolesportsVod;
-
-  const fallbackQuery = useAsyncData<LeaguepediaMatchVods[]>(async () => {
-    if (!shouldTryFallback) return [];
-    return fetchLeaguepediaVods(teamName, 3);
-  }, [shouldTryFallback, teamName]);
 
   if (status === 'loading') {
     return (
@@ -92,64 +91,14 @@ export function TeamVods({ status, events, teamCode, teamName, region }: Props) 
     return <PlaceholderCard label="VOD links — couldn't load right now, pull to refresh in a bit" />;
   }
 
-  // Primary source has real VOD data for at least one of the recent
-  // matches — use it, unchanged from before. This is the path for every
-  // region except LPL, and for LPL too if lolesports.com ever does have
-  // something for it.
-  if (hasAnyLolesportsVod) {
-    return (
-      <View style={styles.list}>
-        {(vodsQuery.data ?? []).map(({ event, games }) => (
-          <MatchVodRow
-            key={event.match?.id ?? event.startTime}
-            opponentLabel={`vs ${event.match?.teams?.find((t) => !!t && t.code !== teamCode)?.code ?? '?'}`}
-            dateLabel={formatMatchDate(event.startTime)}
-            buttons={dedupeLolesportsVods(games)}
-          />
-        ))}
-      </View>
-    );
-  }
-
-  // Primary source empty — for LPL, try the Leaguepedia fallback.
-  if (shouldTryFallback) {
-    if (fallbackQuery.status === 'loading') {
-      return (
-        <View style={[styles.loading, { borderColor: colors.border }]}>
-          <ActivityIndicator color={colors.accent} />
-        </View>
-      );
-    }
-    const fallbackMatches = fallbackQuery.data ?? [];
-    if (fallbackMatches.length > 0) {
-      return (
-        <View style={styles.list}>
-          <AppText style={[styles.sourceNote, { color: colors.textMuted }]}>
-            lolesports.com doesn't carry LPL VODs — showing community-sourced links from Leaguepedia instead.
-          </AppText>
-          {fallbackMatches.map((m) => (
-            <MatchVodRow
-              key={m.matchId}
-              opponentLabel={`vs ${m.opponent}`}
-              dateLabel={formatMatchDate(m.dateTime)}
-              buttons={dedupeLeaguepediaVods(m.games)}
-            />
-          ))}
-        </View>
-      );
-    }
-    // Fallback also came up empty — fall through to the same "no VOD"
-    // per-match display used everywhere else, rather than a special case.
-  }
-
   return (
     <View style={styles.list}>
-      {recentCompleted.map((event) => (
+      {(vodsQuery.data ?? []).map(({ event, games }) => (
         <MatchVodRow
           key={event.match?.id ?? event.startTime}
           opponentLabel={`vs ${event.match?.teams?.find((t) => !!t && t.code !== teamCode)?.code ?? '?'}`}
           dateLabel={formatMatchDate(event.startTime)}
-          buttons={[]}
+          buttons={dedupeLolesportsVods(games)}
         />
       ))}
     </View>
@@ -170,17 +119,6 @@ function dedupeLolesportsVods(games: GameVod[]): VodButton[] {
     return [{ label: 'Series', url: vodUrl(games[0].parameter, games[0].provider) }];
   }
   return games.map((g) => ({ label: `Game ${g.gameNumber}`, url: vodUrl(g.parameter, g.provider) }));
-}
-
-/** Same dedup reasoning as dedupeLolesportsVods, applied to Leaguepedia's
- * shape (already-full URLs, no separate provider field to build one from). */
-function dedupeLeaguepediaVods(games: LeaguepediaMatchVods['games']): VodButton[] {
-  if (games.length === 0) return [];
-  const uniqueUrls = new Set(games.map((g) => g.url));
-  if (games.length > 1 && uniqueUrls.size === 1) {
-    return [{ label: 'Series', url: games[0].url }];
-  }
-  return games.map((g) => ({ label: `Game ${g.gameNumber}`, url: g.url }));
 }
 
 function MatchVodRow({
@@ -229,7 +167,6 @@ function MatchVodRow({
 const styles = StyleSheet.create({
   loading: { borderWidth: 1, borderRadius: 10, padding: 24, alignItems: 'center' },
   list: { gap: 10 },
-  sourceNote: { fontSize: 12, marginBottom: 2 },
   matchBlock: { borderWidth: 1, borderRadius: 10, padding: 14, gap: 8 },
   matchHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   noVod: { fontSize: 12 },

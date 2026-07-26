@@ -179,8 +179,9 @@ src/
     TeamUpcomingMatches.tsx           Team's next 3 upcoming/live matches
     TeamRecentMatches.tsx             Team's last 3 completed matches
     TeamVods.tsx                       Per-game VOD links for the same last
-                                        3 completed matches — coverage
-                                        varies by region, see Section 8
+                                        3 completed matches — LCS/LEC/LCK
+                                        only, LPL shows a static message
+                                        by design, see Section 8
     LaneIcon.tsx                     Maps a roster role string to its lane
                                      icon, with a small dot badge for subs
 
@@ -204,6 +205,11 @@ src/
                                        per-game VOD links (getEventDetails).
                                        Undocumented endpoint, see file
                                        header before touching it
+    leaguepediaClient.ts               PARKED — not called from anywhere.
+                                        LPL VOD fallback that worked but
+                                        triggered 8+ hours of rate limiting
+                                        from a handful of requests. See
+                                        Section 8 before reviving this.
 
   hooks/
     useAsyncData.ts                   Shared fetch/loading/error/ready
@@ -388,16 +394,22 @@ hardcoded.
 
 ## 8. Roadmap (intentionally not built yet)
 
-- VODs are wired up (`getEventDetails`, per-game links, last 3 completed
-  matches — same `src/api/lolesportsClient.ts`) but coverage is genuinely
-  inconsistent, not a bug to chase: confirmed LEC has them via
-  lolesports.com, LPL almost certainly won't (Tencent's exclusive
-  broadcast rights mean LPL VODs generally aren't distributed through
-  lolesports.com/YouTube at all). LCS/LCK unconfirmed either way — no
-  completed matches to test against yet at the time this was built.
-  Leaguepedia's Cargo API (`ScoreboardGames.VOD`, community-maintained)
-  is a possible LPL-specific fallback if the gap turns out to matter —
-  not started, and coverage/playability from that source is unverified.
+- VODs are wired up for LCS/LEC/LCK (`getEventDetails`, per-game links,
+  last 3 completed matches — `src/api/lolesportsClient.ts`), confirmed
+  working on real LEC matches. LPL has no VODs, and that's deliberate, not
+  an oversight: lolesports.com has a confirmed, structural gap for LPL
+  (Tencent's exclusive broadcast rights), and a Leaguepedia Cargo API
+  fallback was actually built and genuinely worked — but Leaguepedia's own
+  rate limiting locked out an entire network for 8+ hours after a handful
+  of real requests, confirmed by hitting the same endpoint from a plain
+  browser and getting the identical block (not a React Native/fetch
+  quirk). A real user could trip that same wall just browsing a few LPL
+  pages, with no way for the app to warn them or recover in the moment —
+  a worse failure mode than a placeholder, so it was disabled at the call
+  site (`TeamVods.tsx` shows a static message for LPL, never calls
+  Leaguepedia). The client itself is parked, not deleted
+  (`src/api/leaguepediaClient.ts`, marked PARKED at the top) — revisiting
+  this would need real request caching first, not just re-enabling it.
 - A shared, persisted, TTL-aware cache for every `api/` call, plus
   `seasonCalendar.ts` to drive a shorter TTL between splits than
   mid-season (discussed early on, not yet built — right now every fetch

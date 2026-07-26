@@ -22,7 +22,11 @@ const FAQS: Array<{ q: string; a: string }> = [
   },
   {
     q: 'Where do match results and VODs come from?',
-    a: "Match schedules and results come from lolesports.com, and VOD links and detailed scoreboards come from Leaguepedia's Cargo API. Both are free, public, and don't require an account \u2014 that part of the app isn't wired up yet.",
+    a: "Match schedules, results, and VODs all come from lolesports.com's own public data \u2014 free, no account needed. LCS, LEC, and LCK are covered. LPL is a separate story, see the next question.",
+  },
+  {
+    q: "Why aren't VODs available for LPL?",
+    a: 'Two separate reasons. lolesports.com itself doesn\u2019t carry LPL VODs at all \u2014 Tencent holds exclusive LPL broadcast rights and doesn\u2019t distribute through lolesports.com or YouTube. A community-sourced fallback (Leaguepedia) was built and genuinely worked, but Leaguepedia rate-limited an entire network for 8+ hours after only a handful of requests \u2014 confirmed by hitting the same address from a plain browser and getting the identical block, not an app bug. A real risk like that wasn\u2019t worth keeping live, so it was turned off rather than left as a trap for anyone browsing a few LPL pages in one sitting.',
   },
   {
     q: "What's a Substitute badge on a roster entry?",

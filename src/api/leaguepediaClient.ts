@@ -1,20 +1,29 @@
 /**
+ * PARKED — not called from anywhere in the app right now. Kept for
+ * reference, not deleted, in case this gets revisited someday behind real
+ * request caching (see the note at the bottom of this comment).
+ *
  * Client for Leaguepedia's Cargo API (lol.fandom.com) — a completely
  * different system from lolesportsClient.ts (esports-api.lolesports.com).
  * MediaWiki's Cargo extension, queried with SQL-like tables/fields/where
  * clauses as URL params, not a REST API in the usual sense.
  *
- * Built specifically as a fallback for regions lolesports.com has a real,
- * structural VOD gap for — confirmed true for LPL (Tencent's exclusive
- * broadcast rights mean LPL VODs generally aren't distributed through
- * lolesports.com/YouTube at all). NOT intended to replace lolesportsClient
- * for LCS/LEC/LCK, which don't have that gap — see the project's README
- * for the reasoning.
- *
- * Community-maintained data (wiki editors fill in the VOD field whenever
- * they get to it) — coverage and correctness aren't guaranteed the way an
- * official source's would be. Treat an empty result as a real, expected
- * possibility, not a bug to chase.
+ * Built as a VOD fallback for LPL (lolesports.com has a confirmed,
+ * structural gap there — Tencent's exclusive broadcast rights). The
+ * queries themselves were confirmed correct (TeamRedirects resolution,
+ * Wikitext parsing, all of it) — what killed this wasn't a bug, it was
+ * Leaguepedia's own rate limiting: a handful of real test requests
+ * triggered an 8+ hour block on the requesting network, confirmed by
+ * hitting the exact same endpoint from a plain browser and getting the
+ * identical error — not a React Native/fetch quirk, a genuine external
+ * limit. A real user innocently browsing a few LPL pages could trip the
+ * same wall with no way for the app to warn them or recover in the
+ * moment, which is a materially worse failure mode than "a section shows
+ * a placeholder" — so this was disabled at the call site (TeamVods.tsx
+ * now returns a static message for LPL without ever calling this file)
+ * rather than kept live. Revisiting this would need real request caching
+ * first (never mind LPL's own coverage still being unconfirmed) — not
+ * something to re-enable as-is.
  */
 
 const CARGO_BASE = 'https://lol.fandom.com/api.php';
