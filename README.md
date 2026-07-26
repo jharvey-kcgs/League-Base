@@ -205,6 +205,11 @@ src/
                                        per-game VOD links (getEventDetails).
                                        Undocumented endpoint, see file
                                        header before touching it
+    cache.ts                           Generic TTL-aware cache (memory +
+                                        AsyncStorage) — every
+                                        lolesportsClient endpoint routes
+                                        through this via apiGet(), except
+                                        getLive (always fetched fresh)
     leaguepediaClient.ts               PARKED — not called from anywhere.
                                         LPL VOD fallback that worked but
                                         triggered 8+ hours of rate limiting
@@ -410,12 +415,19 @@ hardcoded.
   Leaguepedia). The client itself is parked, not deleted
   (`src/api/leaguepediaClient.ts`, marked PARKED at the top) — revisiting
   this would need real request caching first, not just re-enabling it.
-- A shared, persisted, TTL-aware cache for every `api/` call, plus
-  `seasonCalendar.ts` to drive a shorter TTL between splits than
-  mid-season (discussed early on, not yet built — right now every fetch
-  is a live network call every time a screen mounts, no caching at all —
-  worth prioritizing before this gets used heavily, since it means
-  re-fetching leagues/tournaments/standings on every single screen visit)
+- ~~A shared, persisted, TTL-aware cache for every `api/` call~~ — built
+  (`src/api/cache.ts`), every `lolesportsClient.ts` endpoint routes
+  through it via `apiGet()` except `getLive` (always fresh, by design).
+  Went with a simpler per-endpoint TTL table (`CACHE_TTL_BY_PATH` in
+  `lolesportsClient.ts`) rather than a full `seasonCalendar.ts` predicting
+  split date windows — reasoned per how often each endpoint's data
+  actually changes (leagues: 24h, tournaments: 6h, schedule: 5min,
+  standings: 15min, VODs: 1h) instead of trying to infer "mid-split vs
+  between-splits" from dates. Achieves the same protective goal — this
+  was built directly in response to the Leaguepedia rate-limit incident
+  (Section 8, above) — with less to get wrong. A real `seasonCalendar.ts`
+  is still on the table later if these fixed TTLs turn out too coarse
+  once there's more real usage to learn from.
 - The actual Rajdhani font files (Section 6) — not bundled for licensing
   reasons (nothing legally blocks it, unlike Beaufort — just needs you to
   download it)

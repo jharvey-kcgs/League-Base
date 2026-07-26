@@ -12,19 +12,45 @@
  * also uses.
  */
 
+import { withCache } from './cache';
+
 const API_BASE = 'https://esports-api.lolesports.com/persisted/gw';
 const API_KEY = '0TvQnueqKa5mxJntVWt0w4LpLfEkrV1Ta8rQBb9Z';
 const DEFAULT_LOCALE = 'en-US';
 
+/** How long each endpoint's response stays cached before a fresh fetch is
+ * allowed. Reasoned per how often that data actually changes — not one
+ * blanket number for everything. getLive is deliberately absent: live
+ * match state needs to always be current, caching it would defeat the
+ * point of the endpoint. */
+const CACHE_TTL_BY_PATH: Record<string, number> = {
+  getLeagues: 24 * 60 * 60 * 1000, // 24h — essentially static, changes maybe once a year
+  getTournamentsForLeague: 6 * 60 * 60 * 1000, // 6h — a new one appears roughly once per split
+  getSchedule: 5 * 60 * 1000, // 5 min — needs to reflect live/just-finished state reasonably fast
+  getStandings: 15 * 60 * 1000, // 15 min — updates once per completed match, not continuously
+  getEventDetails: 60 * 60 * 1000, // 1h — VODs for a completed match; long-lived once posted, but
+  // short enough that a just-posted VOD doesn't stay hidden for most of a day
+};
+
 async function apiGet<T>(path: string, params: Record<string, string> = {}): Promise<T> {
   const query = new URLSearchParams({ hl: DEFAULT_LOCALE, ...params }).toString();
-  const res = await fetch(`${API_BASE}/${path}?${query}`, {
-    headers: { 'x-api-key': API_KEY },
-  });
-  if (!res.ok) {
-    throw new Error(`lolesports API ${path} failed: HTTP ${res.status}`);
+  const url = `${API_BASE}/${path}?${query}`;
+
+  const doFetch = async (): Promise<T> => {
+    const res = await fetch(url, {
+      headers: { 'x-api-key': API_KEY },
+    });
+    if (!res.ok) {
+      throw new Error(`lolesports API ${path} failed: HTTP ${res.status}`);
+    }
+    return res.json() as Promise<T>;
+  };
+
+  const ttl = CACHE_TTL_BY_PATH[path];
+  if (ttl === undefined) {
+    return doFetch();
   }
-  return res.json() as Promise<T>;
+  return withCache(url, ttl, doFetch);
 }
 
 // --- Types (best-effort from public documentation of this undocumented
