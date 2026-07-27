@@ -172,6 +172,14 @@ src/
                                        same shared-fetch pattern
     OverallStandings.tsx              Region standings table — real data
                                        (fetchStandingsForRegion)
+    BracketRounds.tsx                  Swiss-stage round-by-round pairings,
+                                        horizontally scrollable — owns its
+                                        own Section wrapper, renders nothing
+                                        at all when no bracket is active.
+                                        Built generic (BracketRound[] in) so
+                                        a true elimination bracket later
+                                        (Playoffs, Worlds) can reuse this
+                                        same component, see Section 8
     TeamRecord.tsx                    Team W/L record — takes already-
                                        fetched schedule events as props
                                        (shares one fetch with the two below,
@@ -202,7 +210,9 @@ src/
                                        leagues, schedule, live games,
                                        standings (via tournament ID),
                                        per-team schedule + W/L record,
-                                       per-game VOD links (getEventDetails).
+                                       per-game VOD links (getEventDetails),
+                                       Swiss-stage round reconstruction
+                                       (fetchSwissRounds — see Section 8).
                                        Undocumented endpoint, see file
                                        header before touching it
     cache.ts                           Generic TTL-aware cache (memory +
@@ -399,6 +409,28 @@ hardcoded.
 
 ## 8. Roadmap (intentionally not built yet)
 
+- Bracket/rounds work, status as of this writing: `BracketRounds.tsx` +
+  `fetchSwissRounds()` render a Swiss stage's rounds (LCP's 2026 Split 3,
+  confirmed working) — round-by-round pairings with scores, horizontally
+  scrollable, on `RegionHomeScreen`. The genuinely hard part solved here:
+  `getStandings` doesn't give a round number OR a timestamp for Swiss
+  matches, so round numbers are reconstructed from a real property of
+  Swiss format itself — a team's round always equals however many matches
+  it's already played, plus one — which needs matches in true
+  chronological order, which needs cross-referencing `getStandings`'
+  matches against `getSchedule`'s events by match ID (that cross-reference
+  itself is an assumption, not fully confirmed, though consistent with the
+  same ID scheme already confirmed for VODs). NOT yet built: the actual
+  visual elimination bracket (Playoffs stage, double-elim tree with
+  connecting lines) — every Playoffs match seen so far is still `TBD vs
+  TBD` with empty `previousMatchIds`, so the real connectivity mechanism
+  is still unconfirmed. `BracketRounds`/`BracketRound` were built
+  generically on purpose (nothing Swiss-specific in the component itself)
+  so the same component should be reusable for that once real seeded data
+  exists to design the connectivity against — same reasoning as everything
+  else in this section: build against real data, not a guess. Also
+  relevant for Worlds' eventual EventScreen, discussed earlier in this
+  project but not started.
 - VODs are wired up for LCS/LEC/LCK (`getEventDetails`, per-game links,
   last 3 completed matches — `src/api/lolesportsClient.ts`), confirmed
   working on real LEC matches. LPL has no VODs, and that's deliberate, not

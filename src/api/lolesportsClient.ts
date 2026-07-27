@@ -355,6 +355,14 @@ export interface StandingsRow {
   image?: string;
   wins: number;
   losses: number;
+  /** Only meaningful for a Swiss-stage table (computeSwissStandingsFromMatches
+   * below) — a regular round-robin group stage has no qualify/eliminate
+   * threshold, so this is always 'active' there. Confirmed specifically for
+   * LCP's 2026 Split 3 Swiss stage, across six independent sources: first to
+   * 3 wins qualifies for Playoffs, first to 3 losses is eliminated. If this
+   * ever expands to another Swiss-format region, its threshold isn't
+   * something to assume matches LCP's without checking. */
+  status: 'active' | 'qualified' | 'eliminated';
 }
 
 export interface StandingsGroup {
@@ -366,62 +374,145 @@ export interface StandingsGroup {
   rows: StandingsRow[];
 }
 
-export async function fetchStandings(tournamentId: string): Promise<StandingsGroup[]> {
-  const data = await apiGet<{
-    data: {
-      standings: Array<{
-        stages: Array<{
-          sections: Array<{
-            name: string;
-            rankings: Array<{
-              ordinal: number;
-              teams: Array<{
-                id: string;
-                name: string;
-                code: string;
-                image?: string;
-                record?: { wins: number; losses: number };
-              }>;
-            }>;
-          }>;
-        }>;
-      }>;
-    };
-  }>('getStandings', { tournamentId });
+interface RawStandingsMatchTeam {
+  id: string;
+  name: string;
+  code: string;
+  image?: string;
+  result: { outcome: 'win' | 'loss' | null; gameWins: number } | null;
+}
 
-  // Regular season is stages[0] in practice — playoffs (bracket-shaped, not
-  // a ranked table) would be a separate stage and doesn't fit "standings"
-  // the way this screen means it. Within that stage, a league can have
-  // multiple sections (groups) that each rank independently — LCK splits
-  // into Legend/Rise groups, LPL into Ascend/Nirvana — so every section
-  // needs its own group in the result, not just sections[0].
-  const sections = data.data.standings[0]?.stages?.[0]?.sections ?? [];
+interface RawStandingsMatch {
+  id: string;
+  state: MatchState;
+  teams: Array<RawStandingsMatchTeam | null>;
+}
 
-  return sections.map((section) => {
-    const rows: StandingsRow[] = [];
-    for (const rank of section.rankings ?? []) {
-      for (const team of rank.teams ?? []) {
-        // A brand-new split (LCS's Split 3, which just started, is exactly
-        // this case) can have unseeded ranking slots — no team assigned
-        // yet — represented as a null/undefined entry rather than an
-        // omitted one. Without this guard, team.id below throws
-        // "Cannot read property 'id' of undefined" the moment any region
-        // has even one such slot, which is what was actually happening.
-        if (!team) continue;
-        rows.push({
-          ordinal: rank.ordinal,
-          id: team.id,
-          name: team.name,
-          code: team.code,
-          image: team.image,
-          wins: team.record?.wins ?? 0,
-          losses: team.record?.losses ?? 0,
-        });
-      }
+interface RawStandingsSection {
+  name: string;
+  rankings: Array<{
+    ordinal: number;
+    teams: Array<{
+      id: string;
+      name: string;
+      code: string;
+      image?: string;
+      record?: { wins: number; losses: number };
+    } | null>;
+  }>;
+  // Confirmed via a real LCP response: a Swiss-stage section has this
+  // populated with real completed match results, but its `rankings` above
+  // comes back completely empty regardless — Riot's API just doesn't
+  // pre-compute a ranked table for Swiss stages the way it does for a
+  // round-robin group stage. Used as a fallback in fetchStandings, and
+  // as the actual source data for fetchSwissRounds' round reconstruction.
+  matches?: RawStandingsMatch[];
+}
+
+/** Shared by fetchStandings and fetchSwissRounds — one apiGet call (cached
+ * regardless, so calling this from both isn't a real extra network cost),
+ * one place that owns the raw response shape. */
+async function fetchStandingsSections(tournamentId: string): Promise<RawStandingsSection[]> {
+  let data: { data: { standings: Array<{ stages: Array<{ sections: RawStandingsSection[] }> }> } };
+  try {
+    data = await apiGet('getStandings', { tournamentId });
+  } catch (err) {
+    if (__DEV__) {
+      console.log('[fetchStandingsSections] apiGet THREW for tournamentId', JSON.stringify(tournamentId), ':', err);
     }
-    rows.sort((a, b) => a.ordinal - b.ordinal);
+    throw err;
+  }
+  // Regular season is stages[0] in practice — playoffs (bracket-shaped, not
+  // a ranked table) would be a separate stage. Within that stage, a league
+  // can have multiple sections (groups) that each rank independently —
+  // LCK splits into Legend/Rise groups, LPL into Ascend/Nirvana.
+  return data.data.standings[0]?.stages?.[0]?.sections ?? [];
+}
+
+export async function fetchStandings(tournamentId: string): Promise<StandingsGroup[]> {
+  const sections = await fetchStandingsSections(tournamentId);
+  return sections.map((section) => {
+    const hasRealRankings = (section.rankings ?? []).length > 0;
+    const rows: StandingsRow[] = hasRealRankings
+      ? rowsFromRankings(section.rankings)
+      : computeSwissStandingsFromMatches(section.matches ?? []);
     return { name: section.name ?? '', rows };
   });
+}
+
+function rowsFromRankings(rankings: RawStandingsSection['rankings']): StandingsRow[] {
+  const rows: StandingsRow[] = [];
+  for (const rank of rankings) {
+    for (const team of rank.teams ?? []) {
+      // A brand-new split (LCS's Split 3, which just started, is exactly
+      // this case) can have unseeded ranking slots — no team assigned
+      // yet — represented as a null/undefined entry rather than an
+      // omitted one. Without this guard, team.id below throws
+      // "Cannot read property 'id' of undefined" the moment any region
+      // has even one such slot, which is what was actually happening.
+      if (!team) continue;
+      rows.push({
+        ordinal: rank.ordinal,
+        id: team.id,
+        name: team.name,
+        code: team.code,
+        image: team.image,
+        wins: team.record?.wins ?? 0,
+        losses: team.record?.losses ?? 0,
+        status: 'active',
+      });
+    }
+  }
+  rows.sort((a, b) => a.ordinal - b.ordinal);
+  return rows;
+}
+
+/** Fallback for a Swiss stage, where Riot's API leaves `rankings` empty
+ * even with real completed matches sitting right there. Tallies each
+ * team's wins/losses directly from match results — the same thing a
+ * person watching would do by hand. No tiebreaker data (like a Buchholz
+ * score) is available from this endpoint, so ties just share an ordinal,
+ * same convention CBLOL's own group stage already uses for tied teams. */
+function computeSwissStandingsFromMatches(matches: RawStandingsMatch[]): StandingsRow[] {
+  const byTeam = new Map<string, { name: string; code: string; image?: string; wins: number; losses: number }>();
+
+  for (const match of matches) {
+    if (match.state !== 'completed') continue;
+    for (const team of match.teams) {
+      if (!team || team.code === 'TBD') continue;
+      const entry = byTeam.get(team.id) ?? { name: team.name, code: team.code, image: team.image, wins: 0, losses: 0 };
+      if (team.result?.outcome === 'win') entry.wins += 1;
+      if (team.result?.outcome === 'loss') entry.losses += 1;
+      byTeam.set(team.id, entry);
+    }
+  }
+
+  // Confirmed for LCP's 2026 Split 3 specifically — see the StandingsRow
+  // status field's own comment for sourcing. Not something to assume holds
+  // for a different Swiss-format region without checking first.
+  const WINS_TO_QUALIFY = 3;
+  const LOSSES_TO_ELIMINATE = 3;
+
+  const rows: StandingsRow[] = [...byTeam.entries()].map(([id, t]) => ({
+    ordinal: 0,
+    id,
+    name: t.name,
+    code: t.code,
+    image: t.image,
+    wins: t.wins,
+    losses: t.losses,
+    status: t.wins >= WINS_TO_QUALIFY ? 'qualified' : t.losses >= LOSSES_TO_ELIMINATE ? 'eliminated' : 'active',
+  }));
+
+  rows.sort((a, b) => b.wins - a.wins || a.losses - b.losses);
+  let ordinal = 1;
+  for (let i = 0; i < rows.length; i++) {
+    if (i > 0 && (rows[i].wins !== rows[i - 1].wins || rows[i].losses !== rows[i - 1].losses)) {
+      ordinal = i + 1;
+    }
+    rows[i].ordinal = ordinal;
+  }
+  return rows;
 }
 
 /** Convenience wrapper: resolves league -> current tournament -> standings
@@ -434,4 +525,154 @@ export async function fetchStandingsForRegion(region: Region): Promise<Standings
   const current = pickCurrentTournament(tournaments);
   if (!current) return [];
   return fetchStandings(current.id);
+}
+
+// --- Bracket / rounds (Swiss now; built to generalize to a true
+// elimination bracket for Playoffs and Worlds once real seeded data
+// exists to design that against) ---
+
+export interface BracketTeam {
+  code: string;
+  name: string;
+  image?: string;
+}
+
+export interface BracketMatch {
+  matchId: string;
+  state: MatchState;
+  teamA: BracketTeam;
+  teamB: BracketTeam;
+  scoreA: number;
+  scoreB: number;
+}
+
+export interface BracketMatchGroup {
+  /** e.g. "1-0", "0-1", "2-0", "1-1", "0-2" — the record both teams share
+   * entering this group of matches (Swiss always pairs same-record teams).
+   * Empty string for Round 1, where every team is 0-0 and there's only
+   * one group — nothing meaningful to label. */
+  recordLabel: string;
+  matches: BracketMatch[];
+}
+
+export interface BracketRound {
+  roundNumber: number;
+  groups: BracketMatchGroup[];
+}
+
+function toBracketTeam(team: RawStandingsMatchTeam | null): BracketTeam {
+  return team ? { code: team.code, name: team.name, image: team.image } : { code: 'TBD', name: 'TBD' };
+}
+
+/** Reconstructs a Swiss stage's actual bracket shape — not just "Round N"
+ * columns, but the real record-based groups within each round (e.g. Round
+ * 3 genuinely has three independent groups playing simultaneously: the
+ * 2-0 teams, the 1-1 teams, and the 0-2 teams — confirmed via real
+ * research into LCP's format, not assumed). getStandings' matches don't
+ * carry a round number, a record, OR a timestamp — round number and
+ * record are both reconstructed from a real property of Swiss format:
+ * a team's round always equals however many matches it's already played,
+ * plus one, and its record group is exactly its win-loss record going
+ * into that match, since Swiss only ever pairs teams with identical
+ * records. Getting this right needs matches in true chronological order,
+ * which needs a timestamp getStandings doesn't provide — cross-referenced
+ * here against getSchedule's events (matched by match ID). That
+ * cross-reference assumes match IDs are identical across both endpoints;
+ * unconfirmed for certain but consistent with the same ID scheme already
+ * confirmed for VODs (getEventDetails). Confirmed working against LCP's
+ * real 2026 Split 3 Swiss stage; not yet tested against any other
+ * Swiss-format region. */
+export async function fetchSwissRounds(region: Region): Promise<BracketRound[]> {
+  const leagueId = await resolveLeagueId(region);
+  if (!leagueId) return [];
+
+  const tournaments = await fetchTournamentsForLeague(leagueId);
+  const current = pickCurrentTournament(tournaments);
+  if (!current) return [];
+
+  const [sections, scheduleEvents] = await Promise.all([
+    fetchStandingsSections(current.id),
+    fetchSchedule(leagueId),
+  ]);
+
+  // The comment here always said this was Swiss-only, but the code never
+  // actually checked it — every region's regular-season sections ALSO
+  // expose a raw matches list, not just Swiss ones, so this was building
+  // "bracket" data for every region regardless of format. An empty
+  // `rankings` array is the real signal a section is genuinely Swiss —
+  // the exact same check fetchStandings already uses to decide whether to
+  // compute from matches instead of trusting a pre-built ranked table.
+  const swissMatches = sections
+    .filter((s) => (s.rankings ?? []).length === 0)
+    .flatMap((s) => s.matches ?? []);
+  if (swissMatches.length === 0) return [];
+
+  const startTimeByMatchId = new Map<string, string>();
+  for (const event of scheduleEvents) {
+    if (event.match?.id) startTimeByMatchId.set(event.match.id, event.startTime);
+  }
+
+  const withStartTime = swissMatches
+    .map((m) => ({ match: m, startTime: startTimeByMatchId.get(m.id) }))
+    .filter((m): m is { match: RawStandingsMatch; startTime: string } => !!m.startTime)
+    // Pre-allocated future match SLOTS — neither team determined yet —
+    // aren't a real pairing at all, and every one of them shares the
+    // literal code "TBD" for both sides. Without filtering these out
+    // first, they'd all collapse into one fake "team" in the record
+    // tracking below, corrupting round/group assignment for real matches.
+    // This was the actual cause of extra placeholder matches showing up
+    // under Round 1.
+    .filter(({ match }) => {
+      const [a, b] = match.teams;
+      return a?.code && a.code !== 'TBD' && b?.code && b.code !== 'TBD';
+    })
+    .sort((a, b) => a.startTime.localeCompare(b.startTime));
+
+  const recordByTeam = new Map<string, { wins: number; losses: number }>();
+  const rounds = new Map<number, Map<string, BracketMatch[]>>();
+
+  for (const { match } of withStartTime) {
+    const [teamA, teamB] = match.teams;
+    // Guaranteed non-null by the filter above, but TypeScript doesn't know
+    // that across the .filter/.sort chain.
+    const aCode = teamA!.code;
+    const bCode = teamB!.code;
+
+    const aRecord = recordByTeam.get(aCode) ?? { wins: 0, losses: 0 };
+    const roundNumber = aRecord.wins + aRecord.losses + 1;
+    const recordLabel = roundNumber === 1 ? '' : `${aRecord.wins}-${aRecord.losses}`;
+
+    const bracketMatch: BracketMatch = {
+      matchId: match.id,
+      state: match.state,
+      teamA: toBracketTeam(teamA),
+      teamB: toBracketTeam(teamB),
+      scoreA: teamA?.result?.gameWins ?? 0,
+      scoreB: teamB?.result?.gameWins ?? 0,
+    };
+
+    if (!rounds.has(roundNumber)) rounds.set(roundNumber, new Map());
+    const groupsForRound = rounds.get(roundNumber)!;
+    if (!groupsForRound.has(recordLabel)) groupsForRound.set(recordLabel, []);
+    groupsForRound.get(recordLabel)!.push(bracketMatch);
+
+    // Only advance a team's tracked record once the match has an actual
+    // result — an unstarted match (already paired, not yet played) leaves
+    // both teams' records unchanged for now.
+    if (teamA?.result?.outcome === 'win') recordByTeam.set(aCode, { wins: aRecord.wins + 1, losses: aRecord.losses });
+    else if (teamA?.result?.outcome === 'loss') recordByTeam.set(aCode, { wins: aRecord.wins, losses: aRecord.losses + 1 });
+
+    const bRecord = recordByTeam.get(bCode) ?? { wins: 0, losses: 0 };
+    if (teamB?.result?.outcome === 'win') recordByTeam.set(bCode, { wins: bRecord.wins + 1, losses: bRecord.losses });
+    else if (teamB?.result?.outcome === 'loss') recordByTeam.set(bCode, { wins: bRecord.wins, losses: bRecord.losses + 1 });
+  }
+
+  return [...rounds.entries()]
+    .sort((a, b) => a[0] - b[0])
+    .map(([roundNumber, groupsMap]) => ({
+      roundNumber,
+      groups: [...groupsMap.entries()]
+        .sort((a, b) => b[0].localeCompare(a[0])) // "2-0" before "1-1" before "0-2" — highest wins first
+        .map(([recordLabel, matches]) => ({ recordLabel, matches })),
+    }));
 }

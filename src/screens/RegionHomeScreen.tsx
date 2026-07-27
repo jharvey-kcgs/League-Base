@@ -11,6 +11,7 @@ import { FollowButton } from '../components/FollowButton';
 import { UpcomingGames } from '../components/UpcomingGames';
 import { RecentGames } from '../components/RecentGames';
 import { OverallStandings } from '../components/OverallStandings';
+import { BracketRounds } from '../components/BracketRounds';
 import { TeamTile } from '../components/TeamTile';
 import { useAsyncData } from '../hooks/useAsyncData';
 import { fetchScheduleForRegion } from '../api/lolesportsClient';
@@ -77,6 +78,8 @@ export function RegionHomeScreen({ navigation, region }: Props) {
         <Section title="Overall standings">
           <OverallStandings region={region} />
         </Section>
+
+        <BracketRounds region={region} />
 
         <Section title="Teams">
           <View style={styles.grid}>

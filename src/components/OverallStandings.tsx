@@ -1,5 +1,6 @@
 import React from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../theme/ThemeContext';
 import { AppText } from './AppText';
 import { PlaceholderCard } from './PlaceholderCard';
@@ -67,6 +68,11 @@ function StandingsTable({ rows }: { rows: StandingsRow[] }) {
           <AppText style={{ color: colors.textMuted }}>
             {row.wins}-{row.losses}
           </AppText>
+          {row.status === 'qualified' ? (
+            <Ionicons name="lock-closed" size={14} color={colors.accent} style={styles.statusIcon} />
+          ) : row.status === 'eliminated' ? (
+            <Ionicons name="close-circle" size={16} color={colors.textMuted} style={styles.statusIcon} />
+          ) : null}
         </View>
       ))}
     </View>
@@ -88,4 +94,5 @@ const styles = StyleSheet.create({
   },
   ordinal: { fontSize: 13, width: 20 },
   name: { fontSize: 14, flex: 1 },
+  statusIcon: { marginLeft: 2 },
 });
