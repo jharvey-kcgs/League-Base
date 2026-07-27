@@ -6,7 +6,7 @@ import type { Region, Team, TeamsData } from '../types/team';
 // later via the lolesports/Leaguepedia clients.
 const data = teamsJson as unknown as TeamsData;
 
-export const REGIONS: Region[] = ['LCS', 'LEC', 'LCK', 'LPL', 'CBLOL'];
+export const REGIONS: Region[] = ['LCS', 'LEC', 'LCK', 'LPL', 'CBLOL', 'LCP'];
 
 export function getRegionDisplayName(region: Region): string {
   return data.regions[region].displayName;

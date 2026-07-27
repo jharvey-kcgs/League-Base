@@ -1,6 +1,6 @@
 import { safeColor } from '../utils/colorContrast';
 
-export type Region = 'LCS' | 'LEC' | 'LCK' | 'LPL' | 'CBLOL';
+export type Region = 'LCS' | 'LEC' | 'LCK' | 'LPL' | 'CBLOL' | 'LCP';
 
 export type Lane = 'Top Lane' | 'Jungle' | 'Mid Lane' | 'ADC' | 'Support';
 

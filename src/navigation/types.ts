@@ -25,6 +25,7 @@ export type DrawerParamList = {
   LCK: NavigatorScreenParams<RegionStackParamList>;
   LPL: NavigatorScreenParams<RegionStackParamList>;
   CBLOL: NavigatorScreenParams<RegionStackParamList>;
+  LCP: NavigatorScreenParams<RegionStackParamList>;
 };
 
 // Nested inside each region's Drawer entry: the region home page, then any

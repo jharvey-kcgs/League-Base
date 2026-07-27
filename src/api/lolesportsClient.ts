@@ -286,10 +286,12 @@ export async function fetchScheduleForTeam(region: Region, teamCode: string): Pr
 
   const start = Date.parse(current.startDate);
   const end = Date.parse(current.endDate);
-  return teamEvents.filter((e) => {
+  const scoped = teamEvents.filter((e) => {
     const t = Date.parse(e.startTime);
     return t >= start && t <= end;
   });
+
+  return scoped;
 }
 
 export interface TeamRecord {

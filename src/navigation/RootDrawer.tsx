@@ -13,6 +13,7 @@ const LECStack = createRegionStack('LEC');
 const LCKStack = createRegionStack('LCK');
 const LPLStack = createRegionStack('LPL');
 const CBLOLStack = createRegionStack('CBLOL');
+const LCPStack = createRegionStack('LCP');
 
 export function RootDrawer() {
   const { colors } = useTheme();
@@ -38,6 +39,7 @@ export function RootDrawer() {
       <Drawer.Screen name="LCK" component={LCKStack} />
       <Drawer.Screen name="LPL" component={LPLStack} />
       <Drawer.Screen name="CBLOL" component={CBLOLStack} />
+      <Drawer.Screen name="LCP" component={LCPStack} />
     </Drawer.Navigator>
   );
 }
