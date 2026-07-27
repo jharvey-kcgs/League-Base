@@ -22,7 +22,7 @@ const FAQS: Array<{ q: string; a: string }> = [
   },
   {
     q: 'Where do match results and VODs come from?',
-    a: "Match schedules, results, and VODs all come from lolesports.com's own public data \u2014 free, no account needed. LCS, LEC, and LCK are covered. LPL is a separate story, see the next question.",
+    a: "Match schedules, results, and VODs all come from lolesports.com's own public data \u2014 free, no account needed. LCS, LEC, LCK, CBLOL, and LCP are all covered. LPL is a separate story, see the next question.",
   },
   {
     q: "Why aren't VODs available for LPL?",

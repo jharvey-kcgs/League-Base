@@ -6,14 +6,14 @@
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
-    "assetBundlePatterns": [
-      "**/*"
-    ],
+    "assetBundlePatterns": ["**/*"],
     "icon": "./assets/icon.png",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.JHarvey.LeagueBase"
     },
     "android": {
+      "package": "com.JHarvey.LeagueBase",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0F1B2C"
@@ -23,7 +23,14 @@
       "bundler": "metro"
     },
     "plugins": [
-      "expo-font"
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/icon.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#0B0B0D"
+        }
+      ]
     ]
   }
 }

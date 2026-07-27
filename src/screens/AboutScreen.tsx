@@ -8,16 +8,18 @@ const SECTIONS: Array<{ heading: string; body: string }> = [
   {
     heading: 'What this is',
     body:
-      'League Base is a personal companion app for LCS, LEC, LCK, and LPL — ' +
+      'League Base is a personal companion app for LCS, LEC, LCK, LPL, CBLOL, and LCP — ' +
       'your favorite team on the home screen, and every other team browsable ' +
       'by region.',
   },
   {
     heading: 'Where the data comes from',
     body:
-      'Team names, logos, colors, and rosters are compiled from Liquipedia. ' +
-      'Live match results, schedules, and standings will come from the ' +
-      "lolesports.com and Leaguepedia Cargo APIs — that part's still being built.",
+      "Team names, logos, colors, and rosters are compiled from Liquipedia. Live " +
+      'match schedules, results, standings, and VODs come from lolesports.com\u2019s ' +
+      'own public data \u2014 free, no account needed. Coverage varies a little by ' +
+      'region (see the FAQ for LPL\u2019s VOD situation specifically, and LCP\u2019s ' +
+      'Swiss-stage Bracket section).',
   },
   {
     heading: 'No account, no server',

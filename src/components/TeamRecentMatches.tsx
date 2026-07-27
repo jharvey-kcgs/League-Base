@@ -61,7 +61,7 @@ function MatchRow({ event, teamCode }: { event: ScheduleEvent; teamCode: string 
       <AppText weight="bold" style={[styles.opponent, { color: colors.text }]}>
         vs {opponent?.code ?? '?'}
       </AppText>
-      <AppText style={{ color: outcome === 'win' ? colors.accent : colors.textMuted }}>{rightLabel}</AppText>
+      <AppText style={{ color: outcome === 'win' ? colors.accentReadable : colors.textMuted }}>{rightLabel}</AppText>
     </View>
   );
 }

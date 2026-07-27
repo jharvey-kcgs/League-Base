@@ -54,13 +54,13 @@ function MatchRow({ event }: { event: ScheduleEvent }) {
   return (
     <View style={[styles.row, { backgroundColor: colors.surface, borderColor: colors.border }]}>
       <AppText weight="bold" style={[styles.teams, { color: colors.text }]}>
-        <AppText weight="bold" style={{ color: teamA?.result?.outcome === 'win' ? colors.accent : colors.text }}>
+        <AppText weight="bold" style={{ color: teamA?.result?.outcome === 'win' ? colors.accentReadable : colors.text }}>
           {teamA?.code ?? '?'}
         </AppText>
         {' '}
         {scoreA}-{scoreB}
         {' '}
-        <AppText weight="bold" style={{ color: teamB?.result?.outcome === 'win' ? colors.accent : colors.text }}>
+        <AppText weight="bold" style={{ color: teamB?.result?.outcome === 'win' ? colors.accentReadable : colors.text }}>
           {teamB?.code ?? '?'}
         </AppText>
       </AppText>

@@ -37,7 +37,7 @@ export function TeamPickerGrid({ onPick, currentTeamId }: Props) {
       contentContainerStyle={styles.listContent}
       renderSectionHeader={({ section }) => (
         <View style={[styles.sectionHeader, { backgroundColor: colors.background }]}>
-          <AppText weight="heavy" style={[styles.sectionRegion, { color: colors.accent }]}>
+          <AppText weight="heavy" style={[styles.sectionRegion, { color: colors.accentReadable }]}>
             {section.region}
           </AppText>
           <AppText style={[styles.sectionName, { color: colors.textMuted }]}>{section.title}</AppText>

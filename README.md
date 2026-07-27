@@ -139,6 +139,14 @@ src/
     DataSettingsScreen.tsx          Export / import / delete app data
 
   components/
+    ErrorBoundary.tsx                 Catches any unexpected crash anywhere
+                                       in the app (App.tsx wraps the whole
+                                       navigator with it) — friendly
+                                       recoverable screen instead of a hard
+                                       crash or blank white screen
+    ErrorFallback.tsx                 Themed fallback UI ErrorBoundary
+                                       shows — separate component since a
+                                       class-based boundary can't use hooks
     AppText.tsx                     Drop-in replacement for RN's <Text> —
                                      applies the header font where relevant.
                                      Every screen imports Text from here.

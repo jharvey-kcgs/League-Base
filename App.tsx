@@ -9,6 +9,7 @@ import { NavigationContainer, getFocusedRouteNameFromRoute } from '@react-naviga
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ThemeProvider, useTheme } from './src/theme/ThemeContext';
+import { ErrorBoundary } from './src/components/ErrorBoundary';
 import { useAppFonts, headerTitleStyle } from './src/theme/fonts';
 import { OnboardingScreen } from './src/screens/OnboardingScreen';
 import { RootDrawer } from './src/navigation/RootDrawer';
@@ -105,7 +106,9 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <ThemeProvider>
-        <RootNavigator />
+        <ErrorBoundary>
+          <RootNavigator />
+        </ErrorBoundary>
       </ThemeProvider>
     </SafeAreaProvider>
   );

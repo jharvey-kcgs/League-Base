@@ -18,7 +18,7 @@ export function OnboardingScreen({ onComplete }: Props) {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       <View style={styles.header}>
-        <AppText weight="bold" style={[styles.eyebrow, { color: colors.accent }]}>
+        <AppText weight="bold" style={[styles.eyebrow, { color: colors.accentReadable }]}>
           WELCOME TO LEAGUE BASE
         </AppText>
         <AppText weight="heavy" style={[styles.title, { color: colors.text }]}>

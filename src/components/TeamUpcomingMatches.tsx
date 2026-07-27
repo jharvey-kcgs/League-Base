@@ -56,7 +56,7 @@ function MatchRow({ event, teamCode }: { event: ScheduleEvent; teamCode: string 
       <AppText weight="bold" style={[styles.opponent, { color: colors.text }]}>
         vs {opponent?.code ?? '?'}
       </AppText>
-      <AppText weight={isLive ? 'bold' : 'regular'} style={{ color: isLive ? colors.accent : colors.textMuted }}>
+      <AppText weight={isLive ? 'bold' : 'regular'} style={{ color: isLive ? colors.accentReadable : colors.textMuted }}>
         {isLive ? 'LIVE' : formatMatchDateTime(event.startTime)}
       </AppText>
     </View>

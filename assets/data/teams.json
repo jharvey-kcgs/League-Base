@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "lastUpdated": "2026-07-23",
+  "lastUpdated": "2026-07-26",
   "notes": "Prefilled with 2026 Summer split team names per public sources (Liquipedia/Leaguepedia/Wikipedia, checked 2026-07-23). Verify against Leaguepedia before coding — LPL trims from 14 to 12 teams for Split 3, and LCS's LYON/Disguised slots are guest/promotion-based and could change next split.",
 
   "regions": {
