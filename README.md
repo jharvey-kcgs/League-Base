@@ -1,4 +1,23 @@
-# League Base — Setup & Contributor Guide
+# League Base — Developer Guide & Documentation
+
+*A solo-built project — this doc serves as both working documentation for
+myself (commands, gotchas, decisions, what's still open) and an
+overview for anyone else looking at the repo.*
+
+## Table of Contents
+
+1. [Prerequisites](#1-prerequisites)
+2. [Install](#2-install)
+3. [Running the dev server](#3-running-the-dev-server)
+4. [What's here — project structure](#4-whats-here--project-structure)
+5. [Icons](#5-icons)
+6. [Fonts](#6-fonts)
+7. [Team data & teams.json](#7-team-data--teamsjson)
+8. [The Bracket system](#8-the-bracket-system)
+9. [Color accessibility](#9-color-accessibility)
+10. [Known setup gotchas](#10-known-setup-gotchas)
+11. [TestFlight / Release readiness](#11-testflight--release-readiness)
+12. [Roadmap (genuinely open, not yet built)](#12-roadmap-genuinely-open-not-yet-built)
 
 League Base is a personal companion app for League of Legends esports —
 **LCS, LEC, LCK, LPL, CBLOL, and LCP**, all in one place. Pick a favorite

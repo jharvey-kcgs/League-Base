@@ -32,6 +32,10 @@ const FAQS: Array<{ q: string; a: string }> = [
     q: "What's a Substitute badge on a roster entry?",
     a: 'A small dot on the lane icon marking a bench player rather than a starter \u2014 same lane icon, so you can still tell what position they play.',
   },
+  {
+    q: "What's the Bracket section on LCP's page?",
+    a: 'LCP is currently in a Swiss-format stage \u2014 instead of a fixed weekly schedule, teams get paired each round against others with the same win-loss record. The Bracket section shows those real pairings round by round, plus a lock icon for teams that have already secured a Playoffs spot and an \u2716 for teams that have been eliminated. Other regions only show this section while they\u2019re actually in a similar format \u2014 most of the time, Overall Standings above it is the one that matters.',
+  },
 ];
 
 export function FAQScreen() {
