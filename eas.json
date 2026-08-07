@@ -13,9 +13,16 @@
     },
     "production": {
       "autoIncrement": true
+    },
+    "store": {
+      "autoIncrement": true,
+      "env": {
+        "APP_VARIANT": "production"
+      }
     }
   },
   "submit": {
-    "production": {}
+    "production": {},
+    "store": {}
   }
 }

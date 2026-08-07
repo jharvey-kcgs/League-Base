@@ -73,7 +73,7 @@ is entirely TestFlight logistics (Apple Developer Program enrollment,
 
 ## 2. Install
 
-This project's root config files (`package.json`, `app.json`,
+This project's root config files (`package.json`, `app.config.js`,
 `babel.config.js`, `tsconfig.json`) were written by hand rather than
 generated with `npx create-expo-app` — that tool's default template comes
 bundled with Expo Router (file-based navigation, an `app/` folder, example
@@ -102,7 +102,7 @@ npx expo install @react-navigation/native @react-navigation/native-stack `
 Also add `babel.config.js`'s `react-native-worklets/plugin` line (already in
 the config file I gave you) if you're merging by hand rather than replacing
 the whole file. Reanimated 4 (required for the New Architecture — see
-`app.json`'s `newArchEnabled`) moved its Babel plugin into the separate
+`app.config.js`'s `newArchEnabled`) moved its Babel plugin into the separate
 `react-native-worklets` package, so both the install *and* the plugin path
 matter — an older `react-native-reanimated/plugin` reference will fail with
 `Cannot find module 'react-native-worklets/plugin'`. Babel config changes
@@ -121,7 +121,7 @@ a reload.
 | `@react-native-async-storage/async-storage` | Local storage for favorite team + light/dark mode — the entire app's persisted state runs on this |
 | `@expo/vector-icons` | The cog, hamburger, and drawer-menu icons |
 | `expo-font` | Font-loading infrastructure for the header/body typeface — **Rajdhani is active**, see [Fonts](#6-fonts) |
-| `expo-splash-screen` | Native launch splash — configured via `app.json`'s `plugins` array, shows the app icon on a dark background matching the app's own theme rather than a jarring default flash |
+| `expo-splash-screen` | Native launch splash — configured via `app.config.js`'s `plugins` array, shows the app icon on a dark background matching the app's own theme rather than a jarring default flash |
 
 The lolesports.com API client (`src/api/lolesportsClient.ts`) uses RN's
 built-in `fetch` directly — no HTTP client dependency needed for that.
@@ -323,7 +323,7 @@ src/
 ## 5. Icons
 
 App icon and adaptive icon come from a single square logo — see
-`assets/icon.png` / `assets/adaptive-icon.png`, wired up in `app.json`'s
+`assets/icon.png` / `assets/adaptive-icon.png`, wired up in `app.config.js`'s
 `icon` and `android.adaptiveIcon` fields. The current icon was verified
 objectively sharper than an earlier version (Laplacian variance ~4.3x
 higher — a real measurement, not a guess) and checked against Apple's
@@ -331,7 +331,7 @@ actual rounded-corner mask to confirm nothing gets clipped at the
 corners.
 
 `adaptive-icon.png` is Android's foreground layer specifically — it's
-meant to have a transparent background so `app.json`'s configured
+meant to have a transparent background so `app.config.js`'s configured
 background color shows through underneath it. The current source has a
 solid background baked in, so on Android specifically that covers the
 configured color rather than blending with it — a known, low-priority
@@ -611,7 +611,7 @@ already named correctly — comes up if you split new files out of them.
 
 Hit this bringing in the Drawer (`@react-navigation/drawer` depends on
 Reanimated). SDK 54 installs Reanimated 4, which requires the New
-Architecture (already on — see `app.json`'s `newArchEnabled`) and moved its
+Architecture (already on — see `app.config.js`'s `newArchEnabled`) and moved its
 Babel plugin into a separate `react-native-worklets` package. Symptom:
 
 ```
@@ -688,9 +688,22 @@ this field is why — bump `"lastUpdated"` at the very top of `teams.json` every
 
 Current status, as of this writing:
 
-- **Bundle identifier**: set (`com.JHarvey.LeagueBase`, both iOS and
-  Android, in `app.json`) — this is permanent once Apple registers it, so
-  it was chosen deliberately rather than left as a placeholder.
+- **Two real, separate App Store Connect apps, one codebase** — config
+  moved from static `app.json` to `app.config.js`, which branches on the
+  `APP_VARIANT` env var (see that file's own header comment for the full
+  reasoning):
+  - Default (a plain `eas build`, no `--profile` flag — unchanged from
+    before this split existed): **UAT**, name "League Base (UAT)",
+    bundle identifier `com.JHarvey.LeagueBase`. All regular TestFlight
+    builds go here, always.
+  - `eas build --profile store` (new, explicit, sets `APP_VARIANT=
+    production` via `eas.json`): **Store**, name "League Base", bundle
+    identifier `com.JHarvey.LeagueBaseStore`. Only ever used for a real
+    App Store submission — not something to run casually.
+  - Both bundle identifiers are permanent once Apple registers them, so
+    neither was picked casually. One EAS project (one `projectId`)
+    produces builds for both — this is Expo's own recommended pattern
+    for multiple variants from one codebase, not a workaround.
 - **Splash screen**: configured (`expo-splash-screen`, app icon on a dark
   background matching the app's own theme).
 - **App icon**: finalized — verified objectively sharper than the
@@ -703,19 +716,25 @@ Current status, as of this writing:
 - **App Store Connect metadata** (description, "What to Test" notes,
   privacy questionnaire guidance, support URL) — drafted separately, not
   checked into this repo.
-- **Apple Developer Program enrollment** — in progress, using a
-  dedicated account/email separate from any personal Apple ID.
-- **Not yet done**: `eas-cli` setup, `eas build:configure`, first real
-  `eas build --platform ios`, and TestFlight group setup (Internal vs.
-  External testing depends on the Apple Developer account type — an
-  individual/solo account may need External testing to add outside
-  testers, which requires a short first-build review from Apple, typically
-  24–48 hours, not instant).
+- **Apple Developer Program enrollment**: done.
+- **EAS setup**: done — `eas-cli` installed, `eas build:configure` run,
+  first real `eas build` (UAT) completed successfully, `eas submit`
+  underway.
+- **Not yet done**: the Store variant's first build/submit (only ever
+  needed once actually ready for public release, not before), and
+  TestFlight group setup for outside testers (Internal vs. External
+  testing depends on the Apple Developer account type — an individual/
+  solo account may need External testing to add outside testers, which
+  requires a short first-build review from Apple, typically 24–48 hours,
+  not instant).
 
 App Privacy is worth knowing goes in easily here: **this app collects no
 user data at all.** No accounts, no analytics, no backend. The only thing
 stored is a favorite-team/theme preference, saved locally on-device via
-AsyncStorage, never transmitted anywhere.
+AsyncStorage, never transmitted anywhere. (If crash reporting is ever
+added — discussed as a possible improvement, not yet built — this answer
+changes to include diagnostic data specifically, still a low-scrutiny
+category but no longer literally nothing.)
 
 ---
 
