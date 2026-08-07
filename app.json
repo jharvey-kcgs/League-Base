@@ -6,7 +6,9 @@
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "icon": "./assets/icon.png",
     "ios": {
       "supportsTablet": true,
@@ -31,6 +33,11 @@
           "backgroundColor": "#0B0B0D"
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "474e5dd1-7975-4e2e-86ef-c6547bdd07c8"
+      }
+    }
   }
 }
