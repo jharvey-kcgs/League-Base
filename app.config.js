@@ -12,7 +12,7 @@
 //
 // APP_VARIANT=production (only ever set by `eas build --profile store`):
 // Store.
-//   name: "League Base"
+//   name: "My League Base"
 //   bundleIdentifier / package: com.JHarvey.LeagueBaseStore (new —
 //     registered fresh, only ever used for real App Store submissions)
 //
@@ -24,7 +24,7 @@ const IS_STORE = process.env.APP_VARIANT === 'production';
 
 module.exports = {
   expo: {
-    name: IS_STORE ? 'League Base' : 'League Base (UAT)',
+    name: IS_STORE ? 'My League Base' : 'League Base (UAT)',
     slug: 'league-base',
     version: '1.0.0',
     orientation: 'portrait',
