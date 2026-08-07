@@ -34,6 +34,14 @@ module.exports = {
     icon: './assets/icon.png',
     ios: {
       supportsTablet: true,
+      // Answers App Store Connect's encryption-compliance prompt
+      // permanently, in the binary itself, instead of needing to answer
+      // it manually on every single future submission — accurate for
+      // this app, which uses only standard HTTPS (iOS's own built-in TLS)
+      // and no custom or third-party encryption of any kind.
+      infoPlist: {
+        ITSAppUsesNonExemptEncryption: false,
+      },
       bundleIdentifier: IS_STORE ? 'com.JHarvey.LeagueBaseStore' : 'com.JHarvey.LeagueBase',
     },
     android: {
