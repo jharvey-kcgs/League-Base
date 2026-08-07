@@ -13,7 +13,6 @@ import {
   getThemeMode,
   setFavoriteTeamId as persistFavoriteTeamId,
   setThemeMode as persistThemeMode,
-  clearAllAppData,
   type ThemeMode,
 } from '../data/favoriteTeam';
 import { deriveTheme, type ThemeColors } from './deriveTheme';
@@ -26,13 +25,6 @@ interface ThemeContextValue {
   colors: ThemeColors;
   setFavoriteTeamId: (teamId: string) => Promise<void>;
   setMode: (mode: ThemeMode) => Promise<void>;
-  /** Re-reads favoriteTeamId + mode from storage into memory — call after
-   * Settings > Data > Import so the UI reflects what was just imported. */
-  refreshFromStorage: () => Promise<void>;
-  /** Wipes favoriteTeamId + mode from storage and memory. React Navigation's
-   * auth-flow-style conditional screens (see App.tsx) pick this up and
-   * bounce back to Onboarding on their own — no manual navigation needed. */
-  clearAll: () => Promise<void>;
 }
 
 const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
@@ -70,18 +62,6 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     setModeState(next);
   };
 
-  const refreshFromStorage = async () => {
-    const [storedTeam, storedMode] = await Promise.all([getFavoriteTeamId(), getThemeMode()]);
-    setFavoriteTeamIdState(storedTeam);
-    setModeState(storedMode);
-  };
-
-  const clearAll = async () => {
-    await clearAllAppData();
-    setFavoriteTeamIdState(null);
-    setModeState('system');
-  };
-
   return (
     <ThemeContext.Provider
       value={{
@@ -92,8 +72,6 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
         colors,
         setFavoriteTeamId,
         setMode,
-        refreshFromStorage,
-        clearAll,
       }}
     >
       {children}

@@ -13,7 +13,6 @@ export type RootStackParamList = {
   SettingsTheme: undefined;
   SettingsAbout: undefined;
   SettingsFAQ: undefined;
-  SettingsData: undefined;
 };
 
 // Drawer: "My Team" (favorite team's Home) plus one entry per region, each

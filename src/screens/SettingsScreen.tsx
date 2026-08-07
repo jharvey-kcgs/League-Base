@@ -16,7 +16,6 @@ const ROWS: Array<{
   { key: 'SettingsTheme', label: 'Theme', subtitle: 'Light mode, dark mode' },
   { key: 'SettingsAbout', label: 'About', subtitle: 'What this app does, and where data comes from' },
   { key: 'SettingsFAQ', label: 'FAQ', subtitle: 'Common questions' },
-  { key: 'SettingsData', label: 'Data', subtitle: 'Export, import, or delete app data' },
 ];
 
 export function SettingsScreen({ navigation }: Props) {

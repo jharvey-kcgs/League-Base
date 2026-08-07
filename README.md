@@ -180,12 +180,11 @@ src/
                                      data
     TeamScreen.tsx                  Any team's overview — same TeamOverview
                                      HomeScreen uses, reached via RegionStack
-    SettingsScreen.tsx              Nested menu: Profile, Theme, About, FAQ, Data
+    SettingsScreen.tsx              Nested menu: Profile, Theme, About, FAQ
     ProfileSettingsScreen.tsx       Re-run the team picker to change favorite
     ThemeSettingsScreen.tsx         Light / dark / match-device
     AboutScreen.tsx                 What the app does, where data comes from
     FAQScreen.tsx                   Common questions
-    DataSettingsScreen.tsx          Export / import / delete app data
 
   components/
     ErrorBoundary.tsx                 Catches any unexpected crash anywhere

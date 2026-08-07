@@ -18,7 +18,6 @@ import { ProfileSettingsScreen } from './src/screens/ProfileSettingsScreen';
 import { ThemeSettingsScreen } from './src/screens/ThemeSettingsScreen';
 import { AboutScreen } from './src/screens/AboutScreen';
 import { FAQScreen } from './src/screens/FAQScreen';
-import { DataSettingsScreen } from './src/screens/DataSettingsScreen';
 import type { RootStackParamList } from './src/navigation/types';
 
 // Drawer route name -> human-readable label, for the back-button title on
@@ -86,7 +85,6 @@ function RootNavigator() {
         <Stack.Screen name="SettingsTheme" component={ThemeSettingsScreen} options={{ title: 'Theme' }} />
         <Stack.Screen name="SettingsAbout" component={AboutScreen} options={{ title: 'About' }} />
         <Stack.Screen name="SettingsFAQ" component={FAQScreen} options={{ title: 'FAQ' }} />
-        <Stack.Screen name="SettingsData" component={DataSettingsScreen} options={{ title: 'Data' }} />
       </Stack.Navigator>
     </NavigationContainer>
   );

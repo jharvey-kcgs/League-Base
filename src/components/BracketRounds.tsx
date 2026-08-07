@@ -50,7 +50,7 @@ export function BracketRounds({ region }: { region: Region }) {
               {round.groups.map((group) => (
                 <View key={group.recordLabel || 'all'} style={styles.groupBlock}>
                   {group.recordLabel ? (
-                    <AppText weight="bold" style={[styles.recordLabel, { color: colors.accent }]}>
+                    <AppText weight="bold" style={[styles.recordLabel, { color: colors.accentReadable }]}>
                       {group.recordLabel}
                     </AppText>
                   ) : null}
@@ -82,7 +82,7 @@ function MatchCard({ match }: { match: BracketMatch }) {
       <View style={[styles.divider, { backgroundColor: colors.border }]} />
       <TeamRow code={match.teamB.code} score={match.scoreB} highlighted={bWon} showScore={isDone} />
       {isLive ? (
-        <AppText weight="bold" style={[styles.liveLabel, { color: colors.accent }]}>
+        <AppText weight="bold" style={[styles.liveLabel, { color: colors.accentReadable }]}>
           LIVE
         </AppText>
       ) : null}
@@ -103,7 +103,7 @@ function TeamRow({
 }) {
   const { colors } = useTheme();
   const isTBD = code === 'TBD';
-  const textColor = isTBD ? colors.textMuted : highlighted ? colors.accent : colors.text;
+  const textColor = isTBD ? colors.textMuted : highlighted ? colors.accentReadable : colors.text;
 
   return (
     <View style={styles.teamRow}>
@@ -111,7 +111,7 @@ function TeamRow({
         {code}
       </AppText>
       {showScore ? (
-        <AppText weight={highlighted ? 'bold' : 'regular'} style={{ color: highlighted ? colors.accent : colors.textMuted }}>
+        <AppText weight={highlighted ? 'bold' : 'regular'} style={{ color: highlighted ? colors.accentReadable : colors.textMuted }}>
           {score}
         </AppText>
       ) : null}
