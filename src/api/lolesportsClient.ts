@@ -404,14 +404,14 @@ interface RawStandingsSection {
   // populated with real completed match results, but its `rankings` above
   // comes back completely empty regardless — Riot's API just doesn't
   // pre-compute a ranked table for Swiss stages the way it does for a
-  // round-robin group stage. Used as a fallback in fetchStandings, and
-  // as the actual source data for fetchSwissRounds' round reconstruction.
+  // round-robin group stage. Used as a fallback in fetchStandings.
   matches?: RawStandingsMatch[];
 }
 
-/** Shared by fetchStandings and fetchSwissRounds — one apiGet call (cached
- * regardless, so calling this from both isn't a real extra network cost),
- * one place that owns the raw response shape. */
+/** Used by fetchStandings specifically (always reads stages[0] — the
+ * regular-season/Swiss stage a standings table means). fetchBracketData
+ * uses its own separate fetchActiveStage instead, since the bracket needs
+ * whichever stage is genuinely current right now, not always stages[0]. */
 async function fetchStandingsSections(tournamentId: string): Promise<RawStandingsSection[]> {
   let data: { data: { standings: Array<{ stages: Array<{ sections: RawStandingsSection[] }> }> } };
   try {
@@ -582,30 +582,106 @@ function toBracketTeam(team: RawStandingsMatchTeam | null): BracketTeam {
  * confirmed for VODs (getEventDetails). Confirmed working against LCP's
  * real 2026 Split 3 Swiss stage; not yet tested against any other
  * Swiss-format region. */
-export async function fetchSwissRounds(region: Region): Promise<BracketRound[]> {
+interface RawStage {
+  name: string;
+  sections: RawStandingsSection[];
+}
+
+/** Finds whichever stage is genuinely current right now, rather than
+ * assuming it's always stages[0] (Swiss). A tournament's stages array is
+ * chronological (Swiss, then Play-Ins, then Playoffs for LCP) — each
+ * later stage starts out with every match as TBD-vs-TBD until real teams
+ * actually qualify into it. So "current" is defined as: the LAST stage
+ * that has at least one match where a real team (not "TBD") has been
+ * seeded in. Once Play-Ins gets real teams, this correctly stops
+ * reporting Swiss as current, without needing to hardcode a transition
+ * date or manually flip anything by hand. */
+function pickActiveStage(stages: RawStage[]): RawStage | null {
+  for (let i = stages.length - 1; i >= 0; i--) {
+    const stage = stages[i];
+    const hasRealTeam = stage.sections.some((s) =>
+      (s.matches ?? []).some((m) => m.teams.some((t) => t && t.code !== 'TBD'))
+      || (s.rankings ?? []).some((r) => (r.teams ?? []).some((t) => t))
+    );
+    if (hasRealTeam) return stage;
+  }
+  return stages[0] ?? null;
+}
+
+async function fetchActiveStage(tournamentId: string): Promise<RawStage | null> {
+  let data: { data: { standings: Array<{ stages: RawStage[] }> } };
+  try {
+    data = await apiGet('getStandings', { tournamentId });
+  } catch (err) {
+    if (__DEV__) {
+      console.log('[fetchActiveStage] apiGet THREW for tournamentId', JSON.stringify(tournamentId), ':', err);
+    }
+    throw err;
+  }
+  const stages = data.data.standings[0]?.stages ?? [];
+  return pickActiveStage(stages);
+}
+
+export interface BracketData {
+  /** The real stage name from the API — "Swiss", "Play-Ins", "Playoffs",
+   * whatever it actually is right now. Always populated whenever there's
+   * an active bracket-shaped stage at all, even for a format not built
+   * yet below. */
+  stageName: string;
+  /** Only populated when stageName is a format this can actually render
+   * — currently just Swiss's record-grouped rounds. Play-Ins and
+   * Playoffs are real single/double-elimination trees, a fundamentally
+   * different shape, and get built once real seeded data (not
+   * TBD-vs-TBD) exists to design the connectivity against — see the
+   * README roadmap. Empty here on purpose until then, rather than
+   * forcing Swiss-shaped math onto data it was never designed for. */
+  rounds: BracketRound[];
+}
+
+/** Reconstructs a Swiss stage's actual bracket shape — not just "Round N"
+ * columns, but the real record-based groups within each round (e.g. Round
+ * 3 genuinely has three independent groups playing simultaneously: the
+ * 2-0 teams, the 1-1 teams, and the 0-2 teams — confirmed via real
+ * research into LCP's format, not assumed). getStandings' matches don't
+ * carry a round number, a record, OR a timestamp — round number and
+ * record are both reconstructed from a real property of Swiss format:
+ * a team's round always equals however many matches it's already played,
+ * plus one, and its record group is exactly its win-loss record going
+ * into that match, since Swiss only ever pairs teams with identical
+ * records. Getting this right needs matches in true chronological order,
+ * which needs a timestamp getStandings doesn't provide — cross-referenced
+ * here against getSchedule's events (matched by match ID). That
+ * cross-reference assumes match IDs are identical across both endpoints;
+ * unconfirmed for certain but consistent with the same ID scheme already
+ * confirmed for VODs (getEventDetails). Confirmed working against LCP's
+ * real 2026 Split 3 Swiss stage; not yet tested against any other
+ * Swiss-format region. */
+export async function fetchBracketData(region: Region): Promise<BracketData | null> {
   const leagueId = await resolveLeagueId(region);
-  if (!leagueId) return [];
+  if (!leagueId) return null;
 
   const tournaments = await fetchTournamentsForLeague(leagueId);
   const current = pickCurrentTournament(tournaments);
-  if (!current) return [];
+  if (!current) return null;
 
-  const [sections, scheduleEvents] = await Promise.all([
-    fetchStandingsSections(current.id),
-    fetchSchedule(leagueId),
-  ]);
+  const activeStage = await fetchActiveStage(current.id);
+  if (!activeStage) return null;
 
-  // The comment here always said this was Swiss-only, but the code never
-  // actually checked it — every region's regular-season sections ALSO
-  // expose a raw matches list, not just Swiss ones, so this was building
-  // "bracket" data for every region regardless of format. An empty
-  // `rankings` array is the real signal a section is genuinely Swiss —
-  // the exact same check fetchStandings already uses to decide whether to
-  // compute from matches instead of trusting a pre-built ranked table.
-  const swissMatches = sections
+  const stageName = activeStage.name ?? '';
+
+  // Only Swiss is built out below — anything else reports the real name
+  // (so a future update just adds a case, rather than rebuilding this
+  // stage-detection plumbing from scratch) but no rounds yet.
+  if (stageName.toLowerCase() !== 'swiss') {
+    return { stageName, rounds: [] };
+  }
+
+  const scheduleEvents = await fetchSchedule(leagueId);
+
+  const swissMatches = activeStage.sections
     .filter((s) => (s.rankings ?? []).length === 0)
     .flatMap((s) => s.matches ?? []);
-  if (swissMatches.length === 0) return [];
+  if (swissMatches.length === 0) return { stageName, rounds: [] };
 
   const startTimeByMatchId = new Map<string, string>();
   for (const event of scheduleEvents) {
@@ -667,7 +743,7 @@ export async function fetchSwissRounds(region: Region): Promise<BracketRound[]> 
     else if (teamB?.result?.outcome === 'loss') recordByTeam.set(bCode, { wins: bRecord.wins, losses: bRecord.losses + 1 });
   }
 
-  return [...rounds.entries()]
+  const roundsOut = [...rounds.entries()]
     .sort((a, b) => a[0] - b[0])
     .map(([roundNumber, groupsMap]) => ({
       roundNumber,
@@ -675,4 +751,6 @@ export async function fetchSwissRounds(region: Region): Promise<BracketRound[]> 
         .sort((a, b) => b[0].localeCompare(a[0])) // "2-0" before "1-1" before "0-2" — highest wins first
         .map(([recordLabel, matches]) => ({ recordLabel, matches })),
     }));
+
+  return { stageName, rounds: roundsOut };
 }

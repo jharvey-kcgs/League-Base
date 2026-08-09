@@ -4,12 +4,12 @@ import { useTheme } from '../theme/ThemeContext';
 import { AppText } from './AppText';
 import { Section } from './Section';
 import { useAsyncData } from '../hooks/useAsyncData';
-import { fetchSwissRounds, type BracketMatch } from '../api/lolesportsClient';
+import { fetchBracketData, type BracketMatch } from '../api/lolesportsClient';
 import type { Region } from '../types/team';
 
 export function BracketRounds({ region }: { region: Region }) {
   const { colors } = useTheme();
-  const { status, data } = useAsyncData(() => fetchSwissRounds(region), [region]);
+  const { status, data } = useAsyncData(() => fetchBracketData(region), [region]);
 
   // Unlike Standings (always relevant), a bracket section only makes sense
   // while one is actually happening — so this owns its own Section wrapper
@@ -33,13 +33,17 @@ export function BracketRounds({ region }: { region: Region }) {
     return null;
   }
 
-  const rounds = data ?? [];
+  // rounds is empty either because there's no active bracket stage at all,
+  // OR because the active stage is a real one (Play-Ins, Playoffs) that
+  // isn't built out yet — see fetchBracketData's own comment. Either way,
+  // nothing to show yet.
+  const rounds = data?.rounds ?? [];
   if (rounds.length === 0) {
     return null;
   }
 
   return (
-    <Section title="Bracket">
+    <Section title={`${data!.stageName} Bracket`}>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         {rounds.map((round) => (
           <View key={round.roundNumber} style={styles.column}>

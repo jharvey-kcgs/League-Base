@@ -273,7 +273,7 @@ src/
                                        per-team schedule + W/L record,
                                        per-game VOD links (getEventDetails),
                                        Swiss-stage round reconstruction
-                                       (fetchSwissRounds — see Section 8).
+                                       (fetchBracketData — see Section 8).
                                        Undocumented endpoint, see file
                                        header before touching it
     cache.ts                           Generic TTL-aware cache (memory +
@@ -438,15 +438,29 @@ adding more teams later:**
 
 ## 8. The Bracket system
 
-`BracketRounds.tsx` + `fetchSwissRounds()` (in `lolesportsClient.ts`)
+`BracketRounds.tsx` + `fetchBracketData()` (in `lolesportsClient.ts`)
 render a genuine Swiss-format bracket — confirmed working against LCP's
 real 2026 Split 3 data, not built against a guess.
 
-**The actual problem this solves:** `getStandings` never gives Riot's own
-round number for a Swiss match, and its `rankings` field comes back
-completely empty for a Swiss stage (unlike a normal round-robin group
-stage, where it's pre-populated). Two things had to be reconstructed from
-first principles instead:
+**The section title is dynamic, not hardcoded "Bracket"** — it reads the
+real stage name straight from the API (`"Swiss"`, `"Play-Ins"`,
+`"Playoffs"`, whatever it genuinely is) and shows it as `"<Stage>
+Bracket"`. This needed real stage-detection logic, not just reading
+`stages[0]` forever: a tournament's `stages` array is chronological, and
+each later stage starts out as pure `TBD vs TBD` until real teams
+actually qualify into it. `pickActiveStage()` finds whichever stage is
+genuinely current — the *last* stage (by array order) that has at least
+one real (non-`"TBD"`) team seeded into it — rather than assuming Swiss
+is always the one that matters. This was verified with a direct
+simulation across all three real progression states (Swiss active,
+Play-Ins just seeded, Playoffs just seeded) before trusting it, not just
+read-through logic.
+
+**The actual problem this solves for Swiss specifically:** `getStandings`
+never gives Riot's own round number for a Swiss match, and its
+`rankings` field comes back completely empty for a Swiss stage (unlike a
+normal round-robin group stage, where it's pre-populated). Two things
+had to be reconstructed from first principles instead:
 
 1. **Standings**, by tallying wins/losses directly from each match's
    result — the same thing a person watching would do by hand
@@ -470,27 +484,33 @@ the same ID scheme already confirmed for VODs.
 pre-allocated future match *slots* (neither team determined yet) all
 share the literal team code `"TBD"` — without filtering these out before
 grouping, every one of them collapses into one fake "team" in the record
-tracking, corrupting round assignment. `fetchSwissRounds` filters these
+tracking, corrupting round assignment. `fetchBracketData` filters these
 out explicitly now, but it's the kind of thing that could resurface if
 this logic is ever copied elsewhere.
 
-**Deliberately scoped to Swiss stages only** — `BracketRounds` checks
-`rankings.length === 0` as the actual signal a section is Swiss-shaped,
-not "this section has a matches list at all" (every region's normal
-season also exposes one). Get that check wrong and every region shows a
-multi-week-long bracket instead of just the one actually in Swiss format
-— a real bug hit and fixed during this build.
+**Deliberately scoped to Swiss stages only for actual rendering** —
+`fetchBracketData` only attempts the Swiss-shaped math when the *active*
+stage's real name is literally `"Swiss"`; for anything else (Play-Ins,
+Playoffs) it correctly reports the real stage name but returns zero
+rounds on purpose, rather than force Swiss-specific record-grouping math
+onto a fundamentally different bracket shape. `BracketRounds` disappears
+entirely (no section at all) whenever there's nothing built for the
+active stage — the same honest "nothing to show yet" behavior as when
+there's no active bracket at all, rather than a title with an empty or
+wrong body underneath it.
 
-**What's NOT built yet**: the true visual elimination bracket (Playoffs
-stage, connecting lines showing which match feeds into the next). Every
+**What's NOT built yet**: the true visual elimination bracket (Play-Ins,
+a single-elim tree, and Playoffs, a double-elim tree with separate
+Upper/Lower Bracket paths — confirmed via real screenshots of both to be
+genuinely different shapes, not just "more rounds"). Every Play-Ins and
 Playoffs match seen so far is still `TBD vs TBD` with an empty
-`previousMatchIds`, so the real connectivity mechanism is genuinely
-unconfirmed. `BracketRound`/`BracketRounds` were built generically on
-purpose (nothing Swiss-specific baked into the component itself) so the
-same component should be reusable for that once real seeded data exists
-to design the connectivity against — build against real data, not a
-guess, same reasoning as everything else in this project. Also relevant
-for a future Worlds screen (discussed, not started).
+`previousMatchIds`, so the real connectivity mechanism for either is
+genuinely unconfirmed. `BracketRound`/`BracketRounds` were built
+generically on purpose (nothing Swiss-specific baked into the component
+itself) so a real tree-shaped renderer can reuse this same component
+later — build against real data once each stage actually seeds real
+teams, not a guess, same reasoning as everything else in this project.
+Also relevant for a future Worlds screen (discussed, not started).
 
 ---
 
@@ -740,9 +760,14 @@ category but no longer literally nothing.)
 
 ## 12. Roadmap (genuinely open, not yet built)
 
-- **A true visual elimination bracket** (Playoffs stage, connecting lines
-  showing which match feeds into the next) — blocked on real seeded data,
-  not effort. See [The Bracket system](#8-the-bracket-system) for why.
+- **Real visual elimination bracket renderers for Play-Ins (single-elim
+  tree) and Playoffs (double-elim, separate Upper/Lower Bracket paths) —
+  confirmed genuinely different shapes from each other via real
+  screenshots, not just “more rounds” than Swiss.** Blocked on real
+  seeded data for each, not effort — the stage-detection and dynamic
+  naming that feeds into this is already built and correctly identifies
+  whichever stage is genuinely active. See
+  [The Bracket system](#8-the-bracket-system) for why.
 - **A Worlds EventScreen** — its own Drawer entry (not shoehorned into the
   per-region navigation, since Worlds spans all 6 regions at once):
   Upcoming/Recent Games, a Bracket section (table format during
