@@ -119,7 +119,7 @@ const REGION_SLUG_OVERRIDES: Partial<Record<Region, string>> = {
   CBLOL: 'cblol-brazil',
 };
 
-function lolesportsSlugForRegion(region: Region): string {
+export function lolesportsSlugForRegion(region: Region): string {
   return REGION_SLUG_OVERRIDES[region] ?? region.toLowerCase();
 }
 
@@ -169,6 +169,17 @@ export async function fetchScheduleForRegion(region: Region): Promise<ScheduleEv
 }
 
 // --- Live games (across all leagues — filter client-side by league slug) ---
+
+/** Confirmed via real, currently-indexed lolesports.com pages (not a
+ * guess) — e.g. lolesports.com/live/lcs, lolesports.com/live/les both
+ * exist and show that league's current live match. The raw schedule/live
+ * event data itself has no direct stream URL field at all (checked a
+ * real live event's full raw response first, before assuming one
+ * existed), so this constructs the watch page from the league slug
+ * instead, same slug already present on every ScheduleEvent. */
+export function getLiveWatchUrl(leagueSlug: string): string {
+  return `https://lolesports.com/live/${leagueSlug}`;
+}
 
 export async function fetchLive(): Promise<ScheduleEvent[]> {
   const data = await apiGet<{ data: { schedule: { events: ScheduleEvent[] } } }>('getLive');

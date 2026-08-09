@@ -1,9 +1,9 @@
 import React from 'react';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Linking, Pressable, StyleSheet, View } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
 import { AppText } from './AppText';
 import { PlaceholderCard } from './PlaceholderCard';
-import type { ScheduleEvent } from '../api/lolesportsClient';
+import { getLiveWatchUrl, type ScheduleEvent } from '../api/lolesportsClient';
 import type { AsyncStatus } from '../hooks/useAsyncData';
 import { formatMatchDateTime } from '../utils/formatMatchTime';
 
@@ -56,9 +56,15 @@ function MatchRow({ event, teamCode }: { event: ScheduleEvent; teamCode: string 
       <AppText weight="bold" style={[styles.opponent, { color: colors.text }]}>
         vs {opponent?.code ?? '?'}
       </AppText>
-      <AppText weight={isLive ? 'bold' : 'regular'} style={{ color: isLive ? colors.accentReadable : colors.textMuted }}>
-        {isLive ? 'LIVE' : formatMatchDateTime(event.startTime)}
-      </AppText>
+      {isLive ? (
+        <Pressable onPress={() => Linking.openURL(getLiveWatchUrl(event.league.slug))}>
+          <AppText weight="bold" style={{ color: colors.accentReadable, textDecorationLine: 'underline' }}>
+            LIVE
+          </AppText>
+        </Pressable>
+      ) : (
+        <AppText style={{ color: colors.textMuted }}>{formatMatchDateTime(event.startTime)}</AppText>
+      )}
     </View>
   );
 }

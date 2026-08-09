@@ -702,6 +702,26 @@ caught only by a manual re-check, not by anything automatic. If you ever
 do a roster pass and the About screen still shows an old date afterward,
 this field is why — bump `"lastUpdated"` at the very top of `teams.json` every time, not just the individual entries you touched.
 
+### Gotcha #12: A live match's raw data has no direct stream URL — the watch page has to be built from the league slug
+
+Suggested by a friend testing via TestFlight: make the "LIVE" label
+tappable, opening the actual live broadcast. Checked a real live event's
+complete raw response first rather than assume a `streams` field existed
+(a commonly-cited field for this API in third-party wrapper docs, but
+that's someone else's unconfirmed claim) — confirmed it genuinely isn't
+there; the event object is just team/score/record data, nothing
+stream-related at all.
+
+What actually works, confirmed against real, currently-indexed
+lolesports.com pages (not a guess): `https://lolesports.com/live/
+{leagueSlug}` — e.g. `lolesports.com/live/lcs`. `getLiveWatchUrl()` (in
+`lolesportsClient.ts`) builds this from the same `league.slug` every
+`ScheduleEvent` already carries. `BracketRounds` specifically needed the
+existing `lolesportsSlugForRegion()` mapping exported for this too, since
+a `BracketMatch` doesn't carry its own league slug the way a
+`ScheduleEvent` does — reused rather than duplicated, so CBLOL's known
+non-obvious slug (`cblol-brazil`) stays correct here automatically.
+
 ---
 
 ## 11. TestFlight / Release readiness

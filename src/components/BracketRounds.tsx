@@ -1,10 +1,10 @@
 import React from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
 import { AppText } from './AppText';
 import { Section } from './Section';
 import { useAsyncData } from '../hooks/useAsyncData';
-import { fetchBracketData, type BracketMatch } from '../api/lolesportsClient';
+import { fetchBracketData, getLiveWatchUrl, lolesportsSlugForRegion, type BracketMatch } from '../api/lolesportsClient';
 import type { Region } from '../types/team';
 
 export function BracketRounds({ region }: { region: Region }) {
@@ -42,6 +42,8 @@ export function BracketRounds({ region }: { region: Region }) {
     return null;
   }
 
+  const leagueSlug = lolesportsSlugForRegion(region);
+
   return (
     <Section title={`${data!.stageName} Bracket`}>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
@@ -60,7 +62,7 @@ export function BracketRounds({ region }: { region: Region }) {
                   ) : null}
                   <View style={styles.matchList}>
                     {group.matches.map((match) => (
-                      <MatchCard key={match.matchId} match={match} />
+                      <MatchCard key={match.matchId} match={match} leagueSlug={leagueSlug} />
                     ))}
                   </View>
                 </View>
@@ -73,7 +75,7 @@ export function BracketRounds({ region }: { region: Region }) {
   );
 }
 
-function MatchCard({ match }: { match: BracketMatch }) {
+function MatchCard({ match, leagueSlug }: { match: BracketMatch; leagueSlug: string }) {
   const { colors } = useTheme();
   const isLive = match.state === 'inProgress';
   const isDone = match.state === 'completed';
@@ -86,9 +88,11 @@ function MatchCard({ match }: { match: BracketMatch }) {
       <View style={[styles.divider, { backgroundColor: colors.border }]} />
       <TeamRow code={match.teamB.code} score={match.scoreB} highlighted={bWon} showScore={isDone} />
       {isLive ? (
-        <AppText weight="bold" style={[styles.liveLabel, { color: colors.accentReadable }]}>
-          LIVE
-        </AppText>
+        <Pressable onPress={() => Linking.openURL(getLiveWatchUrl(leagueSlug))}>
+          <AppText weight="bold" style={[styles.liveLabel, { color: colors.accentReadable, textDecorationLine: 'underline' }]}>
+            LIVE
+          </AppText>
+        </Pressable>
       ) : null}
     </View>
   );
