@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../theme/ThemeContext';
 import { AppText } from './AppText';
 import { PlaceholderCard } from './PlaceholderCard';
+import { Section } from './Section';
 import { useAsyncData } from '../hooks/useAsyncData';
 import { fetchStandingsForRegion, type StandingsRow } from '../api/lolesportsClient';
 import type { Region } from '../types/team';
@@ -12,21 +13,33 @@ export function OverallStandings({ region }: { region: Region }) {
   const { colors } = useTheme();
   const { status, data } = useAsyncData(() => fetchStandingsForRegion(region), [region]);
 
+  // Unlike before, this now owns its own Section wrapper instead of
+  // RegionHomeScreen wrapping it externally — the same reason Bracket
+  // does: once the region's real regular-season stage is no longer the
+  // current picture (Swiss finished, moved on to Play-Ins/Playoffs), the
+  // underlying fetch correctly returns empty, and this should disappear
+  // entirely (title included), not show an empty or stale table.
   if (status === 'loading') {
     return (
-      <View style={[styles.loading, { borderColor: colors.border }]}>
-        <ActivityIndicator color={colors.accent} />
-      </View>
+      <Section title="Overall standings">
+        <View style={[styles.loading, { borderColor: colors.border }]}>
+          <ActivityIndicator color={colors.accent} />
+        </View>
+      </Section>
     );
   }
 
   if (status === 'error') {
-    return <PlaceholderCard label="Regular season standings — couldn't load right now, pull to refresh in a bit" />;
+    return (
+      <Section title="Overall standings">
+        <PlaceholderCard label="Regular season standings — couldn't load right now, pull to refresh in a bit" />
+      </Section>
+    );
   }
 
   const groups = (data ?? []).filter((g) => g.rows.length > 0);
   if (groups.length === 0) {
-    return <PlaceholderCard label="No standings available right now" />;
+    return null;
   }
 
   // Only show a group label when there's more than one group (LCK's
@@ -35,18 +48,20 @@ export function OverallStandings({ region }: { region: Region }) {
   const showLabels = groups.length > 1;
 
   return (
-    <View style={styles.groups}>
-      {groups.map((group) => (
-        <View key={group.name || 'default'} style={styles.groupWrap}>
-          {showLabels && group.name ? (
-            <AppText weight="bold" style={[styles.groupLabel, { color: colors.textMuted }]}>
-              {group.name.toUpperCase()}
-            </AppText>
-          ) : null}
-          <StandingsTable rows={group.rows} />
-        </View>
-      ))}
-    </View>
+    <Section title="Overall standings">
+      <View style={styles.groups}>
+        {groups.map((group) => (
+          <View key={group.name || 'default'} style={styles.groupWrap}>
+            {showLabels && group.name ? (
+              <AppText weight="bold" style={[styles.groupLabel, { color: colors.textMuted }]}>
+                {group.name.toUpperCase()}
+              </AppText>
+            ) : null}
+            <StandingsTable rows={group.rows} />
+          </View>
+        ))}
+      </View>
+    </Section>
   );
 }
 

@@ -75,9 +75,7 @@ export function RegionHomeScreen({ navigation, region }: Props) {
           <RecentGames status={schedule.status} events={schedule.data} />
         </Section>
 
-        <Section title="Overall standings">
-          <OverallStandings region={region} />
-        </Section>
+        <OverallStandings region={region} />
 
         <BracketRounds region={region} />
 

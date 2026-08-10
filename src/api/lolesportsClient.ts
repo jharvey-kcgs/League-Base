@@ -368,11 +368,20 @@ export interface StandingsRow {
   losses: number;
   /** Only meaningful for a Swiss-stage table (computeSwissStandingsFromMatches
    * below) — a regular round-robin group stage has no qualify/eliminate
-   * threshold, so this is always 'active' there. Confirmed specifically for
-   * LCP's 2026 Split 3 Swiss stage, across six independent sources: first to
-   * 3 wins qualifies for Playoffs, first to 3 losses is eliminated. If this
-   * ever expands to another Swiss-format region, its threshold isn't
-   * something to assume matches LCP's without checking. */
+   * threshold, so this is always 'active' there. The "3 wins qualifies"
+   * half is confirmed solid — verified directly against real LCP 2026
+   * Split 3 data, all three teams that hit exactly 3 wins stopped there
+   * and matched the official "ADVANCES" list exactly. The "3 losses
+   * eliminates" half is confirmed WRONG, not just unconfirmed — two real
+   * teams (GZ, DFM) each won one game on the way to their 3rd loss and
+   * were NOT eliminated, instead advancing to a decider match against
+   * each other. A clean 0-3-in-3-games case (SHG) genuinely was
+   * eliminated, so the real rule depends on the specific bracket path,
+   * not just a loss tally. computeSwissStandingsFromMatches below never
+   * produces 'eliminated' as a result of this — a wrong ✕ telling
+   * someone a team is out when they're not is worse than showing
+   * nothing. If this ever expands to another Swiss-format region, don't
+   * assume its rules match LCP's without checking either. */
   status: 'active' | 'qualified' | 'eliminated';
 }
 
@@ -424,7 +433,7 @@ interface RawStandingsSection {
  * uses its own separate fetchActiveStage instead, since the bracket needs
  * whichever stage is genuinely current right now, not always stages[0]. */
 async function fetchStandingsSections(tournamentId: string): Promise<RawStandingsSection[]> {
-  let data: { data: { standings: Array<{ stages: Array<{ sections: RawStandingsSection[] }> }> } };
+  let data: { data: { standings: Array<{ stages: RawStage[] }> } };
   try {
     data = await apiGet('getStandings', { tournamentId });
   } catch (err) {
@@ -433,11 +442,31 @@ async function fetchStandingsSections(tournamentId: string): Promise<RawStanding
     }
     throw err;
   }
+  const stages = data.data.standings[0]?.stages ?? [];
+  const stage0 = stages[0];
+  if (!stage0) return [];
+
   // Regular season is stages[0] in practice — playoffs (bracket-shaped, not
   // a ranked table) would be a separate stage. Within that stage, a league
   // can have multiple sections (groups) that each rank independently —
   // LCK splits into Legend/Rise groups, LPL into Ascend/Nirvana.
-  return data.data.standings[0]?.stages?.[0]?.sections ?? [];
+  //
+  // But stages[0] isn't ALWAYS still the meaningful one to show — once a
+  // Swiss stage (LCP) genuinely finishes and the tournament moves on to
+  // Play-Ins/Playoffs, a win-loss table for stage[0] is a frozen snapshot
+  // of something that's no longer the current picture, not a real
+  // "standings" anymore. Reusing the exact same pickActiveStage logic
+  // already proven for the Bracket section: if stage[0] is still the
+  // genuinely active stage, show it as before. If the tournament has
+  // moved past it, return empty — same "nothing to show" signal Bracket
+  // already uses, letting Overall Standings disappear entirely rather
+  // than show a stale table with lock/eliminated icons that no longer
+  // describe the current picture. A normal round-robin region (LCS, LEC,
+  // etc.) only ever has one stage, so this never triggers for them —
+  // stage[0] is always "active" by definition when it's the only stage.
+  if (pickActiveStage(stages) !== stage0) return [];
+
+  return stage0.sections ?? [];
 }
 
 export async function fetchStandings(tournamentId: string): Promise<StandingsGroup[]> {
@@ -498,11 +527,12 @@ function computeSwissStandingsFromMatches(matches: RawStandingsMatch[]): Standin
     }
   }
 
-  // Confirmed for LCP's 2026 Split 3 specifically — see the StandingsRow
-  // status field's own comment for sourcing. Not something to assume holds
-  // for a different Swiss-format region without checking first.
+  // "3 wins qualifies" is confirmed solid for LCP's 2026 Split 3 — see the
+  // StandingsRow status field's own comment. There's deliberately no
+  // LOSSES_TO_ELIMINATE constant anymore — that half of the rule is
+  // confirmed wrong, not just unconfirmed, by real data (see the same
+  // comment for the actual proof).
   const WINS_TO_QUALIFY = 3;
-  const LOSSES_TO_ELIMINATE = 3;
 
   const rows: StandingsRow[] = [...byTeam.entries()].map(([id, t]) => ({
     ordinal: 0,
@@ -512,7 +542,7 @@ function computeSwissStandingsFromMatches(matches: RawStandingsMatch[]): Standin
     image: t.image,
     wins: t.wins,
     losses: t.losses,
-    status: t.wins >= WINS_TO_QUALIFY ? 'qualified' : t.losses >= LOSSES_TO_ELIMINATE ? 'eliminated' : 'active',
+    status: t.wins >= WINS_TO_QUALIFY ? 'qualified' : 'active',
   }));
 
   rows.sort((a, b) => b.wins - a.wins || a.losses - b.losses);
@@ -600,21 +630,40 @@ interface RawStage {
 
 /** Finds whichever stage is genuinely current right now, rather than
  * assuming it's always stages[0] (Swiss). A tournament's stages array is
- * chronological (Swiss, then Play-Ins, then Playoffs for LCP) — each
- * later stage starts out with every match as TBD-vs-TBD until real teams
- * actually qualify into it. So "current" is defined as: the LAST stage
- * that has at least one match where a real team (not "TBD") has been
- * seeded in. Once Play-Ins gets real teams, this correctly stops
- * reporting Swiss as current, without needing to hardcode a transition
- * date or manually flip anything by hand. */
+ * chronological (Swiss, then Play-Ins, then Playoffs for LCP).
+ *
+ * The original version of this picked the LAST stage with any real
+ * (non-"TBD") team in it — which turned out wrong, confirmed by a real
+ * report: Play-Ins gets partially seeded incrementally, as soon as
+ * enough Swiss results are mathematically known to fill some of its
+ * slots, well before Swiss's actual last match happens. That made this
+ * function jump to "Play-Ins is current" while Swiss still had a game
+ * left to play, and since Play-Ins isn't built out yet, the whole
+ * section just vanished.
+ *
+ * The correct rule: "current" is the EARLIEST stage (in chronological
+ * order) that has both real teams seeded AND at least one match that
+ * isn't finished yet. Swiss stays current for as long as it has any
+ * unfinished match, however seeded-in-advance a later stage already is.
+ * Only once every match in a stage is "completed" does this move on to
+ * checking the next one. If every stage with real activity turns out to
+ * be fully finished (the whole tournament is over), this falls back to
+ * the LAST one with any real activity, so there's still something
+ * sensible to show rather than nothing. */
 function pickActiveStage(stages: RawStage[]): RawStage | null {
-  for (let i = stages.length - 1; i >= 0; i--) {
-    const stage = stages[i];
-    const hasRealTeam = stage.sections.some((s) =>
+  const hasRealActivity = (stage: RawStage) =>
+    stage.sections.some((s) =>
       (s.matches ?? []).some((m) => m.teams.some((t) => t && t.code !== 'TBD'))
       || (s.rankings ?? []).some((r) => (r.teams ?? []).some((t) => t))
     );
-    if (hasRealTeam) return stage;
+  const isFullyFinished = (stage: RawStage) =>
+    stage.sections.every((s) => (s.matches ?? []).every((m) => m.state === 'completed'));
+
+  for (const stage of stages) {
+    if (hasRealActivity(stage) && !isFullyFinished(stage)) return stage;
+  }
+  for (let i = stages.length - 1; i >= 0; i--) {
+    if (hasRealActivity(stages[i])) return stages[i];
   }
   return stages[0] ?? null;
 }
@@ -629,7 +678,9 @@ async function fetchActiveStage(tournamentId: string): Promise<RawStage | null> 
     }
     throw err;
   }
+
   const stages = data.data.standings[0]?.stages ?? [];
+
   return pickActiveStage(stages);
 }
 

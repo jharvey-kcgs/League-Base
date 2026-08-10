@@ -229,10 +229,16 @@ src/
                                        RegionHomeScreen)
     RecentGames.tsx                   Region's last 5 completed matches,
                                        same shared-fetch pattern
-    OverallStandings.tsx              Region standings table, including
-                                       lock/eliminated status icons for a
-                                       Swiss stage's qualify/eliminate
-                                       thresholds
+    OverallStandings.tsx              Region standings table, including a
+                                       lock icon once a Swiss-stage team
+                                       hits the confirmed qualify
+                                       threshold (deliberately never shows
+                                       an eliminated icon — see Section
+                                       10). Owns its own Section wrapper
+                                       and disappears entirely, same as
+                                       BracketRounds, once the tournament
+                                       has genuinely moved past the stage
+                                       it represents — see Gotcha #14.
     BracketRounds.tsx                  Swiss-stage round-by-round pairings,
                                         correctly grouped by record (not
                                         just round number), horizontally
@@ -721,6 +727,74 @@ existing `lolesportsSlugForRegion()` mapping exported for this too, since
 a `BracketMatch` doesn't carry its own league slug the way a
 `ScheduleEvent` does — reused rather than duplicated, so CBLOL's known
 non-obvious slug (`cblol-brazil`) stays correct here automatically.
+
+### Gotcha #13: "first to 3 losses is eliminated" is confirmed WRONG for LCP's actual Swiss format — and the active-stage picker needed a second real fix too
+
+Two real bugs, both caught from actual user reports during the LCP
+Swiss stage's final week, both fixed by getting the real data rather
+than reasoning from screenshots or secondary research alone.
+
+**Bug 1 — the active-stage picker jumped to a later stage too early.**
+The original `pickActiveStage` picked the *last* stage with any real
+(non-`"TBD"`) team seeded in — but Play-Ins gets partially seeded
+*incrementally*, as soon as enough Swiss results are mathematically
+known, well before Swiss's own last match happens. That made the whole
+Bracket section vanish while Swiss still had a game left to play, since
+Play-Ins isn't built out yet. Fixed: "current" is now the *earliest*
+stage that has real teams AND at least one unfinished match — Swiss
+stays current for as long as it has anything left to play, however far
+in advance a later stage has already started filling in.
+
+**Bug 2 — the "3 losses eliminates" half of the qualify/eliminate rule
+is provably wrong, not just imprecise.** Traced every one of LCP's real
+Swiss matches by hand (`node` script, not guesswork) after a user
+noticed a team (Ground Zero Gaming, 1-3) still alive and seeded into
+Play-Ins despite already having 3 losses. The real pattern: a team that
+loses 3 *straight* games with zero wins mixed in (Fukuoka SoftBank
+HAWKS, 0-3 in exactly 3 games) is genuinely, cleanly eliminated. But two
+teams that each won one game on the way to their 3rd loss (reaching
+"1-3" only on their 4th game) were **not** eliminated — they advanced to
+a decider match against each other instead. The real rule depends on
+the specific bracket path a team took, not just a loss tally — something
+neither the original six-source research nor a deeper Liquipedia dive
+fully captured, and not something to trust without seeing it fail on
+real data.
+
+Fixed conservatively rather than by reverse-engineering the full real
+rule: `computeSwissStandingsFromMatches` no longer ever produces
+`'eliminated'` — only `'qualified'` (which IS confirmed solid: every team
+that hit exactly 3 wins stopped there and matched the official
+"ADVANCES" list exactly) or `'active'`. A wrong ✕ telling someone a team
+is out when they're not is worse than showing no icon at all. The UI's
+own eliminated-icon rendering in `OverallStandings.tsx` was left
+untouched rather than deleted — it's simply dormant now, and will work
+correctly again the moment this gets revisited with the real full rule
+mapped out.
+
+### Gotcha #14: Overall Standings needed the exact same "disappear once moot" treatment as the Bracket section
+
+`fetchStandingsSections` always read `stages[0]` directly, with no
+concept of whether that stage was still the current one — unlike
+`fetchBracketData`, which already tracked the genuinely active stage via
+`pickActiveStage`. That meant once a Swiss stage actually finished and
+the tournament moved on to Play-Ins/Playoffs, Overall Standings would
+have kept showing a frozen, stale table (lock/eliminated icons included)
+that no longer described the current picture at all — a real correctness
+gap, caught before it happened rather than after, thanks to a direct
+question about exactly this scenario.
+
+Fixed by reusing the same `pickActiveStage` logic already proven for the
+Bracket, rather than inventing a second way to answer the same question:
+`fetchStandingsSections` now checks whether `stages[0]` is still the
+stage `pickActiveStage` would actually pick. If yes (true for every
+normal round-robin region, which only ever has one stage anyway, and
+true for Swiss for as long as it has anything left to play), standings
+show exactly as before. If the tournament has genuinely moved past it,
+this returns empty, and `OverallStandings` — which now owns its own
+`Section` wrapper instead of being wrapped externally by
+`RegionHomeScreen`, the same restructuring `BracketRounds` already
+went through — disappears entirely, title included, rather than show
+something stale.
 
 ---
 
