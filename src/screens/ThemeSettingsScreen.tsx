@@ -5,7 +5,6 @@ import { AppText } from '../components/AppText';
 import type { ThemeMode } from '../data/favoriteTeam';
 
 const OPTIONS: Array<{ mode: ThemeMode; label: string; subtitle: string }> = [
-  { mode: 'system', label: 'Match device', subtitle: "Follow your phone's system setting" },
   { mode: 'light', label: 'Light', subtitle: 'Always use light mode' },
   { mode: 'dark', label: 'Dark', subtitle: 'Always use dark mode' },
 ];
