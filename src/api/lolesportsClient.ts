@@ -12,7 +12,8 @@
  * also uses.
  */
 
-import { withCache } from './cache';
+import { withCache, clearApiCache } from './cache';
+export { clearApiCache };
 import type { Region } from '../types/team';
 
 const API_BASE = 'https://esports-api.lolesports.com/persisted/gw';

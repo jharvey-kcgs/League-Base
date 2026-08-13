@@ -1,5 +1,5 @@
-import React from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import React, { useState } from 'react';
+import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CommonActions, DrawerActions } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -14,7 +14,7 @@ import { OverallStandings } from '../components/OverallStandings';
 import { BracketRounds } from '../components/BracketRounds';
 import { TeamTile } from '../components/TeamTile';
 import { useAsyncData } from '../hooks/useAsyncData';
-import { fetchScheduleForRegion } from '../api/lolesportsClient';
+import { fetchScheduleForRegion, clearApiCache } from '../api/lolesportsClient';
 import type { Region } from '../types/team';
 import type { RegionStackParamList } from '../navigation/types';
 
@@ -28,7 +28,25 @@ export function RegionHomeScreen({ navigation, region }: Props) {
     .filter((t): t is { id: string; team: NonNullable<typeof t.team> } => Boolean(t.team))
     .filter((t) => t.team.active);
   // Shared by Upcoming and Recent games below — one fetch, not two.
-  const schedule = useAsyncData(() => fetchScheduleForRegion(region), [region]);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  // Bumped on pull-to-refresh — added to schedule's deps below, and passed
+  // as OverallStandings' and BracketRounds' key so their own separate
+  // internal fetches re-run too, since both fetch independently of the
+  // schedule call here.
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    // Pull-to-refresh should mean "go get this fresh, right now" — without
+    // clearing the cache first, a refetch this soon after the last one
+    // would almost always just hit the still-valid cached value and look
+    // like nothing happened.
+    await clearApiCache();
+    setRefreshKey((k) => k + 1);
+    setIsRefreshing(false);
+  };
+
+  const schedule = useAsyncData(() => fetchScheduleForRegion(region), [region, refreshKey]);
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
@@ -40,7 +58,10 @@ export function RegionHomeScreen({ navigation, region }: Props) {
         onOpenSettings={() => navigation.dispatch(CommonActions.navigate('Settings'))}
         onOpenRegions={() => navigation.dispatch(DrawerActions.openDrawer())}
       />
-      <ScrollView style={styles.container}>
+      <ScrollView
+        style={styles.container}
+        refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} tintColor={colors.accent} />}
+      >
         <Section title="Region news">
           <View style={styles.followRow}>
             {info.twitter ? (
@@ -75,9 +96,9 @@ export function RegionHomeScreen({ navigation, region }: Props) {
           <RecentGames status={schedule.status} events={schedule.data} />
         </Section>
 
-        <OverallStandings region={region} />
+        <OverallStandings key={`standings-${refreshKey}`} region={region} />
 
-        <BracketRounds region={region} />
+        <BracketRounds key={`bracket-${refreshKey}`} region={region} />
 
         <Section title="Teams">
           <View style={styles.grid}>
