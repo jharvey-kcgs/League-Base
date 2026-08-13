@@ -1,5 +1,5 @@
-import React from 'react';
-import { ActivityIndicator, Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import React, { useRef, useState } from 'react';
+import { ActivityIndicator, Linking, Pressable, ScrollView, StyleSheet, View, type LayoutChangeEvent } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
 import { AppText } from './AppText';
 import { Section } from './Section';
@@ -7,9 +7,60 @@ import { useAsyncData } from '../hooks/useAsyncData';
 import { fetchBracketData, getLiveWatchUrl, lolesportsSlugForRegion, type BracketMatch } from '../api/lolesportsClient';
 import type { Region } from '../types/team';
 
+interface CardRect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 export function BracketRounds({ region }: { region: Region }) {
   const { colors } = useTheme();
   const { status, data } = useAsyncData(() => fetchBracketData(region), [region]);
+
+  // Position of every rendered match card, relative to contentRef below —
+  // populated as each MatchCard reports its own measured position. Used
+  // to draw the connector lines, which should point at wherever a card
+  // ACTUALLY is right now, including any centering shift already applied.
+  const [cardRects, setCardRects] = useState<Record<string, CardRect>>({});
+  // Each card's FIRST-EVER measured position specifically, captured once
+  // and never updated again afterward — the actual fix for a real bounce
+  // bug. Centering used to compute its offset from cardRects, which
+  // already reflected whatever offset was currently applied — so "how
+  // far do I need to move" was being computed from a position that
+  // already included the previous answer to that exact question. Once a
+  // card reached the right spot, that math naturally produced "shift by
+  // 0" — but since the offset was being SET as marginTop rather than
+  // accumulated, "shift by 0" removed the shift that got it there,
+  // snapping it back and repeating forever. naturalRects is a stable
+  // baseline immune to that: it's set once, from the card's true
+  // pre-shift position, and centering math always reads from it instead
+  // of the live, possibly-already-shifted cardRects.
+  const [naturalRects, setNaturalRects] = useState<Record<string, CardRect>>({});
+  const contentRef = useRef<View>(null);
+
+  const reportCardRect = (matchId: string, nodeRef: React.RefObject<View | null>) => {
+    const node = nodeRef.current;
+    const container = contentRef.current;
+    if (!node || !container) return;
+    node.measure((_x, _y, width, height, pageX, pageY) => {
+      container.measure((_cx, _cy, _cw, _ch, containerPageX, containerPageY) => {
+        const next = { x: pageX - containerPageX, y: pageY - containerPageY, width, height };
+        setCardRects((prev) => {
+          const existing = prev[matchId];
+          const unchanged =
+            existing &&
+            Math.abs(existing.x - next.x) < 0.5 &&
+            Math.abs(existing.y - next.y) < 0.5 &&
+            Math.abs(existing.width - next.width) < 0.5 &&
+            Math.abs(existing.height - next.height) < 0.5;
+          if (unchanged) return prev;
+          return { ...prev, [matchId]: next };
+        });
+        setNaturalRects((prev) => (prev[matchId] ? prev : { ...prev, [matchId]: next }));
+      });
+    });
+  };
 
   // Unlike Standings (always relevant), a bracket section only makes sense
   // while one is actually happening — so this owns its own Section wrapper
@@ -44,46 +95,155 @@ export function BracketRounds({ region }: { region: Region }) {
 
   const leagueSlug = lolesportsSlugForRegion(region);
 
+  // Every match that has a confirmed feedsInto target, paired with that
+  // target's own rect once both are actually measured — connectors only
+  // render once BOTH ends have a real position, never a guessed one. Uses
+  // the LIVE cardRects, not naturalRects — the line should point at
+  // wherever a card actually is right now, shift included.
+  const connectors = rounds
+    .flatMap((r) => r.groups.flatMap((g) => g.matches))
+    .filter((m) => m.feedsInto)
+    .map((m) => ({ from: cardRects[m.matchId], to: cardRects[m.feedsInto!] }))
+    .filter((c): c is { from: CardRect; to: CardRect } => !!c.from && !!c.to);
+
+  // Shifts a match down or up so its vertical center lines up with the
+  // midpoint of the entire previous round's span — the "boxed in the
+  // middle" look from the official page, based on the whole previous
+  // round rather than just this match's specific confirmed feedsInto
+  // source. Deliberately reads from naturalRects (stable, set once),
+  // never cardRects (live, already reflects any shift already applied)
+  // — see naturalRects' own comment for why that distinction is the
+  // actual fix for a real bounce bug hit here before. Scoped to only a
+  // match that's alone in its group: repositioning one match among
+  // several siblings would need to also reflow the others to avoid
+  // overlapping them, a meaningfully harder problem this doesn't attempt
+  // yet — every bracket built so far only ever needed this for a lone
+  // match anyway (Play-Ins' Round 2 has exactly one).
+  const centeringOffset: Record<string, number> = {};
+  for (let i = 1; i < rounds.length; i++) {
+    const round = rounds[i];
+    const previousRoundMatchIds = rounds[i - 1].groups.flatMap((g) => g.matches.map((m) => m.matchId));
+    const previousRects = previousRoundMatchIds.map((id) => naturalRects[id]).filter((r): r is CardRect => !!r);
+    if (previousRects.length !== previousRoundMatchIds.length || previousRects.length === 0) continue; // wait for the whole previous round to be measured
+
+    const spanTop = Math.min(...previousRects.map((r) => r.y));
+    const spanBottom = Math.max(...previousRects.map((r) => r.y + r.height));
+    const desiredCenterY = (spanTop + spanBottom) / 2;
+
+    for (const group of round.groups) {
+      if (group.matches.length !== 1) continue;
+      const match = group.matches[0];
+      const myNaturalRect = naturalRects[match.matchId];
+      if (!myNaturalRect) continue;
+      const myNaturalCenterY = myNaturalRect.y + myNaturalRect.height / 2;
+      const offset = desiredCenterY - myNaturalCenterY;
+      if (Math.abs(offset) >= 0.5) centeringOffset[match.matchId] = offset;
+    }
+  }
+
   return (
     <Section title={`${data!.stageName} Bracket`}>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-        {rounds.map((round) => (
-          <View key={round.roundNumber} style={styles.column}>
-            <AppText weight="bold" style={[styles.roundHeader, { color: colors.textMuted }]}>
-              ROUND {round.roundNumber}
-            </AppText>
-            <View style={styles.groupList}>
-              {round.groups.map((group) => (
-                <View key={group.recordLabel || 'all'} style={styles.groupBlock}>
-                  {group.recordLabel ? (
-                    <AppText weight="bold" style={[styles.recordLabel, { color: colors.accentReadable }]}>
-                      {group.recordLabel}
-                    </AppText>
-                  ) : null}
-                  <View style={styles.matchList}>
-                    {group.matches.map((match) => (
-                      <MatchCard key={match.matchId} match={match} leagueSlug={leagueSlug} />
-                    ))}
+        <View ref={contentRef} style={styles.contentWrap}>
+          {rounds.map((round) => (
+            <View key={round.roundNumber} style={styles.column}>
+              <AppText weight="bold" style={[styles.roundHeader, { color: colors.textMuted }]}>
+                ROUND {round.roundNumber}
+              </AppText>
+              <View style={styles.groupList}>
+                {round.groups.map((group) => (
+                  <View key={group.recordLabel || 'all'} style={styles.groupBlock}>
+                    {group.recordLabel ? (
+                      <AppText weight="bold" style={[styles.recordLabel, { color: colors.accentReadable }]}>
+                        {group.recordLabel}
+                      </AppText>
+                    ) : null}
+                    <View style={styles.matchList}>
+                      {group.matches.map((match) => (
+                        <MatchCard
+                          key={match.matchId}
+                          match={match}
+                          leagueSlug={leagueSlug}
+                          onMeasured={reportCardRect}
+                          centerOffset={centeringOffset[match.matchId] ?? 0}
+                        />
+                      ))}
+                    </View>
                   </View>
-                </View>
-              ))}
+                ))}
+              </View>
             </View>
-          </View>
-        ))}
+          ))}
+          {connectors.map((c, i) => (
+            <Connector key={i} from={c.from} to={c.to} color={colors.border} />
+          ))}
+        </View>
       </ScrollView>
     </Section>
   );
 }
 
-function MatchCard({ match, leagueSlug }: { match: BracketMatch; leagueSlug: string }) {
+/** Draws an L-shaped connector from the right edge of one card's vertical
+ * center to the left edge of another's — the same shape lolesports.com's
+ * own bracket page uses. Built from three plain, absolutely-positioned
+ * Views (a horizontal segment, a vertical segment, another horizontal
+ * segment) rather than adding an SVG dependency for one simple line. */
+function Connector({ from, to, color }: { from: CardRect; to: CardRect; color: string }) {
+  const fromY = from.y + from.height / 2;
+  const toY = to.y + to.height / 2;
+  const fromX = from.x + from.width;
+  const toX = to.x;
+  const midX = fromX + (toX - fromX) / 2;
+  const top = Math.min(fromY, toY);
+  const height = Math.abs(toY - fromY);
+
+  return (
+    <>
+      <View style={[styles.lineH, { left: fromX, top: fromY - 1, width: midX - fromX, backgroundColor: color }]} />
+      <View style={[styles.lineV, { left: midX - 1, top, height, backgroundColor: color }]} />
+      <View style={[styles.lineH, { left: midX, top: toY - 1, width: toX - midX, backgroundColor: color }]} />
+    </>
+  );
+}
+
+function MatchCard({
+  match,
+  leagueSlug,
+  onMeasured,
+  centerOffset,
+}: {
+  match: BracketMatch;
+  leagueSlug: string;
+  onMeasured: (matchId: string, ref: React.RefObject<View | null>) => void;
+  centerOffset: number;
+}) {
   const { colors } = useTheme();
   const isLive = match.state === 'inProgress';
   const isDone = match.state === 'completed';
   const aWon = isDone && match.scoreA > match.scoreB;
   const bWon = isDone && match.scoreB > match.scoreA;
+  const cardRef = useRef<View>(null);
+
+  // Re-measures on every layout pass, not just once — a card's height can
+  // genuinely change (the LIVE label appearing/disappearing, a long team
+  // code wrapping differently), and a connector drawn from a stale
+  // measurement would visibly point at the wrong spot. Also captures the
+  // one extra layout pass centerOffset itself causes when first applied —
+  // that update only ever touches cardRects (naturalRects is already
+  // locked in from the earlier, pre-shift measurement), so it can't
+  // change centerOffset's own computed value on the next render. See
+  // naturalRects' own comment for why that distinction is what actually
+  // keeps this from bouncing.
+  const handleLayout = (_e: LayoutChangeEvent) => {
+    if (match.feedsInto || cardRef.current) onMeasured(match.matchId, cardRef);
+  };
 
   return (
-    <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+    <View
+      ref={cardRef}
+      onLayout={handleLayout}
+      style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border, marginTop: centerOffset }]}
+    >
       <TeamRow code={match.teamA.code} score={match.scoreA} highlighted={aWon} showScore={isDone} />
       <View style={[styles.divider, { backgroundColor: colors.border }]} />
       <TeamRow code={match.teamB.code} score={match.scoreB} highlighted={bWon} showScore={isDone} />
@@ -129,7 +289,8 @@ function TeamRow({
 
 const styles = StyleSheet.create({
   loading: { borderWidth: 1, borderRadius: 10, padding: 24, alignItems: 'center' },
-  scrollContent: { gap: 14, paddingRight: 8 },
+  scrollContent: { paddingRight: 8 },
+  contentWrap: { flexDirection: 'row', gap: 14, position: 'relative' },
   column: { width: 150, gap: 8 },
   roundHeader: { fontSize: 11, letterSpacing: 0.5 },
   groupList: { gap: 14 },
@@ -140,4 +301,6 @@ const styles = StyleSheet.create({
   divider: { height: 1 },
   teamRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 6 },
   liveLabel: { fontSize: 10, marginTop: 2 },
+  lineH: { position: 'absolute', height: 2 },
+  lineV: { position: 'absolute', width: 2 },
 });

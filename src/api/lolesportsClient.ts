@@ -586,6 +586,15 @@ export interface BracketMatch {
   teamB: BracketTeam;
   scoreA: number;
   scoreB: number;
+  /** matchId of the specific match this one's winner advances into, when
+   * known. NOT derived from `previousMatchIds` — that's confirmed empty
+   * on every match checked so far, even well into a real tournament with
+   * real teams seeded in. Populated instead by direct, explicit
+   * confirmation of a specific bracket's real connectivity (see
+   * KNOWN_MATCH_CONNECTIONS below) — a narrow, hard-won fact about one
+   * specific bracket, not a general rule to assume holds for any other
+   * one without the same direct confirmation. */
+  feedsInto?: string;
 }
 
 export interface BracketMatchGroup {
@@ -680,6 +689,22 @@ async function fetchActiveStage(tournamentId: string): Promise<RawStage | null> 
     throw err;
   }
 
+  // TEMPORARY — Swiss just genuinely finished (GAM beat DCG 3-1 in the
+  // last possible Swiss match, GAM now the 4th qualified team). Checking
+  // two things with a fresh, current read: whether GAM now fills
+  // Play-Ins' previously-TBD slot next to Team Secret Whales (an early
+  // test of the seeding-match theory, even before Friday's CFO/MVK
+  // result), and whether previousMatchIds has started populating for
+  // Play-Ins matches now that real results exist upstream of them (it
+  // was confirmed empty every time checked before, but always while
+  // Swiss itself was still incomplete). Logging every stage's complete,
+  // unfiltered matches — remove once checked.
+  if (__DEV__) {
+    for (const stage of data.data.standings[0]?.stages ?? []) {
+      console.log(`[fetchActiveStage] stage "${stage.name}":`, JSON.stringify(stage.sections, null, 2));
+    }
+  }
+
   const stages = data.data.standings[0]?.stages ?? [];
 
   return pickActiveStage(stages);
@@ -691,14 +716,35 @@ export interface BracketData {
    * an active bracket-shaped stage at all, even for a format not built
    * yet below. */
   stageName: string;
-  /** Only populated when stageName is a format this can actually render
-   * — currently just Swiss's record-grouped rounds. Play-Ins and
-   * Playoffs are real single/double-elimination trees, a fundamentally
-   * different shape, and get built once real seeded data (not
-   * TBD-vs-TBD) exists to design the connectivity against — see the
-   * README roadmap. Empty here on purpose until then, rather than
-   * forcing Swiss-shaped math onto data it was never designed for. */
+  /** Empty when there's genuinely nothing determined yet for the active
+   * stage (e.g. Playoffs while every match is still TBD-vs-TBD) — see
+   * fetchSwissBracketData and fetchEliminationBracketData for how each
+   * stage shape actually gets built. */
   rounds: BracketRound[];
+}
+
+/** Top-level entry point — resolves the active stage, then delegates to
+ * whichever of the two real bracket shapes actually applies: Swiss's
+ * record-grouped rounds, or a generic single/double-elimination bracket
+ * for anything else with real (non-fully-TBD) matches. */
+export async function fetchBracketData(region: Region): Promise<BracketData | null> {
+  const leagueId = await resolveLeagueId(region);
+  if (!leagueId) return null;
+
+  const tournaments = await fetchTournamentsForLeague(leagueId);
+  const current = pickCurrentTournament(tournaments);
+  if (!current) return null;
+
+  const activeStage = await fetchActiveStage(current.id);
+  if (!activeStage) return null;
+
+  const stageName = activeStage.name ?? '';
+
+  if (stageName.toLowerCase() === 'swiss') {
+    return fetchSwissBracketData(stageName, activeStage, leagueId);
+  }
+
+  return fetchEliminationBracketData(stageName, activeStage);
 }
 
 /** Reconstructs a Swiss stage's actual bracket shape — not just "Round N"
@@ -719,26 +765,11 @@ export interface BracketData {
  * confirmed for VODs (getEventDetails). Confirmed working against LCP's
  * real 2026 Split 3 Swiss stage; not yet tested against any other
  * Swiss-format region. */
-export async function fetchBracketData(region: Region): Promise<BracketData | null> {
-  const leagueId = await resolveLeagueId(region);
-  if (!leagueId) return null;
-
-  const tournaments = await fetchTournamentsForLeague(leagueId);
-  const current = pickCurrentTournament(tournaments);
-  if (!current) return null;
-
-  const activeStage = await fetchActiveStage(current.id);
-  if (!activeStage) return null;
-
-  const stageName = activeStage.name ?? '';
-
-  // Only Swiss is built out below — anything else reports the real name
-  // (so a future update just adds a case, rather than rebuilding this
-  // stage-detection plumbing from scratch) but no rounds yet.
-  if (stageName.toLowerCase() !== 'swiss') {
-    return { stageName, rounds: [] };
-  }
-
+async function fetchSwissBracketData(
+  stageName: string,
+  activeStage: RawStage,
+  leagueId: string
+): Promise<BracketData> {
   const scheduleEvents = await fetchSchedule(leagueId);
 
   const swissMatches = activeStage.sections
@@ -816,4 +847,86 @@ export async function fetchBracketData(region: Region): Promise<BracketData | nu
     }));
 
   return { stageName, rounds: roundsOut };
+}
+
+/** Confirmed working against LCP's real Play-Ins data (2026 Split 3) —
+ * Round 1's two real matchups (MVK vs CFO, DFM vs GZ) plus Round 2's
+ * partial pairing (TSW already placed, one still-TBD slot) matched this
+ * exactly, including the round numbering lining up with the official
+ * page's own "Round 1"/"Round 2" labels.
+ *
+ * The real limitation, stated plainly rather than papered over:
+ * `previousMatchIds` is confirmed empty on every match checked so far,
+ * even this far into the tournament with real teams already seeded in —
+ * so there's no reliable way to draw an actual connecting line from a
+ * specific Round 1 match to the Round 2 match its winner advances into.
+ * What CAN be trusted: which round a match belongs to. A match where
+ * neither team is `"TBD"` is a fully determined pairing — it can only be
+ * an earlier round, since a later round's participants aren't knowable
+ * until an earlier round resolves. A match with exactly one `"TBD"` slot
+ * is one round further out (waiting on one specific other match to
+ * finish); two `"TBD"` slots, further still. Sorting on that count and
+ * grouping matches with the same count into the same round produces
+ * correct columns without asserting a specific fill-in that hasn't
+ * actually been confirmed yet.
+ *
+ * Renders every round as a single group (no record-label concept the
+ * way Swiss has) — BracketRounds already hides an empty recordLabel, so
+ * this reuses that component with zero changes needed. */
+/** Explicit, directly-confirmed match connections — matchId -> matchId of
+ * the match its winner advances into. NOT derived from the API (which
+ * has confirmed nothing usable for this — see BracketMatch.feedsInto's
+ * own comment); each entry here was confirmed by directly viewing the
+ * official bracket page's own rendered connector lines, one specific
+ * bracket at a time. Every entry needs its own real confirmation before
+ * being added — nothing here generalizes to a different bracket, a
+ * different region's Play-Ins, or even this same bracket after these
+ * specific matches resolve and new ones take their place.
+ *
+ * Confirmed 2026-08-14, LCP Play-Ins Round 1 -> Round 2, by directly
+ * viewing the official bracket page: CTBC Flying Oyster vs MVK Esports
+ * (id 116769725389404173) connects to the Round 2 match against Team
+ * Secret Whales (id 116769725389404185) — winner takes the open slot.
+ * DetonatioN FocusMe vs Ground Zero Gaming (116769725389404179) was
+ * directly confirmed to have NO connection drawn on the official page —
+ * deliberately absent from this table, not an oversight. */
+const KNOWN_MATCH_CONNECTIONS: Record<string, string> = {
+  '116769725389404173': '116769725389404185',
+};
+
+function fetchEliminationBracketData(stageName: string, stage: RawStage): BracketData {
+  const matches = stage.sections.flatMap((s) => s.matches ?? []);
+
+  const tbdCount = (m: RawStandingsMatch) => m.teams.filter((t) => !t || t.code === 'TBD').length;
+
+  // A stage where every match is still fully TBD-vs-TBD (Playoffs, right
+  // now) has nothing real to show yet — same "nothing to show" signal
+  // used everywhere else, rather than a bracket full of blank cards.
+  const hasAnyRealMatch = matches.some((m) => tbdCount(m) < 2);
+  if (!hasAnyRealMatch) return { stageName, rounds: [] };
+
+  const byTbdCount = new Map<number, BracketMatch[]>();
+  for (const match of matches) {
+    const [teamA, teamB] = match.teams;
+    const count = tbdCount(match);
+    if (!byTbdCount.has(count)) byTbdCount.set(count, []);
+    byTbdCount.get(count)!.push({
+      matchId: match.id,
+      state: match.state,
+      teamA: toBracketTeam(teamA),
+      teamB: toBracketTeam(teamB),
+      scoreA: teamA?.result?.gameWins ?? 0,
+      scoreB: teamB?.result?.gameWins ?? 0,
+      feedsInto: KNOWN_MATCH_CONNECTIONS[match.id],
+    });
+  }
+
+  const rounds = [...byTbdCount.entries()]
+    .sort((a, b) => a[0] - b[0]) // fewest TBD slots first — the most-determined, earliest round
+    .map(([, roundMatches], i) => ({
+      roundNumber: i + 1,
+      groups: [{ recordLabel: '', matches: roundMatches }],
+    }));
+
+  return { stageName, rounds };
 }
