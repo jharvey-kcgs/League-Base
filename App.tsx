@@ -5,7 +5,7 @@ import 'react-native-gesture-handler';
 
 import React from 'react';
 import { ActivityIndicator, View } from 'react-native';
-import { NavigationContainer, getFocusedRouteNameFromRoute } from '@react-navigation/native';
+import { NavigationContainer, getFocusedRouteNameFromRoute, useNavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ThemeProvider, useTheme } from './src/theme/ThemeContext';
@@ -35,8 +35,18 @@ const DRAWER_TAB_LABELS: Record<string, string> = {
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
+// Every screen that's a sibling of MainDrawer in the root Stack, rather
+// than nested inside the drawer itself — see RootDrawer.tsx's comment on
+// the swipeEnabled prop for why this list matters.
+const SETTINGS_ROUTE_NAMES = ['Settings', 'SettingsProfile', 'SettingsTheme', 'SettingsAbout', 'SettingsFAQ'];
+
 function RootNavigator() {
   const { favoriteTeamId, isLoading, colors } = useTheme();
+  const navigationRef = useNavigationContainerRef<RootStackParamList>();
+  // Starts true (the drawer's own screens are always what's shown first,
+  // right after Onboarding) — flipped by onStateChange below the moment
+  // navigation ever puts a Settings-related screen on top.
+  const [drawerSwipeEnabled, setDrawerSwipeEnabled] = React.useState(true);
 
   if (isLoading) {
     return (
@@ -47,7 +57,13 @@ function RootNavigator() {
   }
 
   return (
-    <NavigationContainer>
+    <NavigationContainer
+      ref={navigationRef}
+      onStateChange={() => {
+        const currentRoute = navigationRef.getCurrentRoute()?.name ?? '';
+        setDrawerSwipeEnabled(!SETTINGS_ROUTE_NAMES.includes(currentRoute));
+      }}
+    >
       <Stack.Navigator
         screenOptions={{
           headerStyle: { backgroundColor: colors.surface },
@@ -69,12 +85,13 @@ function RootNavigator() {
           // since MainDrawer itself doesn't know which of its tabs is active.
           <Stack.Screen
             name="MainDrawer"
-            component={RootDrawer}
             options={({ route }) => ({
               headerShown: false,
               title: DRAWER_TAB_LABELS[getFocusedRouteNameFromRoute(route) ?? 'MyTeam'] ?? 'My Team',
             })}
-          />
+          >
+            {() => <RootDrawer swipeEnabled={drawerSwipeEnabled} />}
+          </Stack.Screen>
         )}
         <Stack.Screen name="Settings" component={SettingsScreen} options={{ title: 'Settings' }} />
         <Stack.Screen
