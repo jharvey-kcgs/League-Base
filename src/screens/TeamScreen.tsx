@@ -1,13 +1,21 @@
 import React, { useLayoutEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
-import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { getTeam } from '../data/teamsStore';
 import { useTheme } from '../theme/ThemeContext';
 import { AppText } from '../components/AppText';
 import { TeamOverview } from '../components/TeamOverview';
-import type { RegionStackParamList } from '../navigation/types';
 
-type Props = NativeStackScreenProps<RegionStackParamList, 'Team'>;
+// Deliberately NOT NativeStackScreenProps<RegionStackParamList, 'Team'> —
+// this same component is now also mounted at the root level as
+// 'TeamDetail' (reached from Search), a completely different navigator.
+// Both provide exactly this shape (a teamId param, a setOptions method),
+// which is all this screen actually needs, so typing against that
+// directly avoids a navigator-specific type that would only be correct
+// in one of its two real mount points.
+type Props = {
+  route: { params: { teamId: string } };
+  navigation: { setOptions: (options: { title: string }) => void };
+};
 
 export function TeamScreen({ route, navigation }: Props) {
   const { colors } = useTheme();

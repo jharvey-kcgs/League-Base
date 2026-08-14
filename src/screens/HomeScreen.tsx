@@ -17,6 +17,7 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
       <AppHeader
         title="League Base"
         onOpenSettings={() => navigation.navigate('Settings')}
+        onOpenSearch={() => navigation.navigate('Search')}
         onOpenRegions={() => navigation.openDrawer()}
       />
 

@@ -18,6 +18,8 @@ import { ProfileSettingsScreen } from './src/screens/ProfileSettingsScreen';
 import { ThemeSettingsScreen } from './src/screens/ThemeSettingsScreen';
 import { AboutScreen } from './src/screens/AboutScreen';
 import { FAQScreen } from './src/screens/FAQScreen';
+import { SearchScreen } from './src/screens/SearchScreen';
+import { TeamScreen } from './src/screens/TeamScreen';
 import type { RootStackParamList } from './src/navigation/types';
 
 // Drawer route name -> human-readable label, for the back-button title on
@@ -37,8 +39,12 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 
 // Every screen that's a sibling of MainDrawer in the root Stack, rather
 // than nested inside the drawer itself — see RootDrawer.tsx's comment on
-// the swipeEnabled prop for why this list matters.
-const SETTINGS_ROUTE_NAMES = ['Settings', 'SettingsProfile', 'SettingsTheme', 'SettingsAbout', 'SettingsFAQ'];
+// the swipeEnabled prop for why this list matters. Search and TeamDetail
+// added alongside the original Settings screens for the same reason —
+// any screen covering MainDrawer this way needs to be in this list, or
+// the same back-button gesture conflict that list was built to fix
+// would resurface on these too.
+const ROUTES_COVERING_DRAWER = ['Settings', 'SettingsProfile', 'SettingsTheme', 'SettingsAbout', 'SettingsFAQ', 'Search', 'TeamDetail'];
 
 function RootNavigator() {
   const { favoriteTeamId, isLoading, colors } = useTheme();
@@ -61,7 +67,7 @@ function RootNavigator() {
       ref={navigationRef}
       onStateChange={() => {
         const currentRoute = navigationRef.getCurrentRoute()?.name ?? '';
-        setDrawerSwipeEnabled(!SETTINGS_ROUTE_NAMES.includes(currentRoute));
+        setDrawerSwipeEnabled(!ROUTES_COVERING_DRAWER.includes(currentRoute));
       }}
     >
       <Stack.Navigator
@@ -102,6 +108,8 @@ function RootNavigator() {
         <Stack.Screen name="SettingsTheme" component={ThemeSettingsScreen} options={{ title: 'Theme' }} />
         <Stack.Screen name="SettingsAbout" component={AboutScreen} options={{ title: 'About' }} />
         <Stack.Screen name="SettingsFAQ" component={FAQScreen} options={{ title: 'FAQ' }} />
+        <Stack.Screen name="Search" component={SearchScreen} options={{ title: 'Search' }} />
+        <Stack.Screen name="TeamDetail" component={TeamScreen} options={{ title: 'Team' }} />
       </Stack.Navigator>
     </NavigationContainer>
   );

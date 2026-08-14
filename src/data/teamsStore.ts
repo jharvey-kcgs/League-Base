@@ -52,3 +52,36 @@ export function getTeamsGroupedByRegion(): Array<{
 export function getTeamsLastUpdated(): string {
   return data.lastUpdated;
 }
+
+/** Case-insensitive substring match on team name, across every active
+ * team in every region — the whole point being a user doesn't need to
+ * know or navigate to the right region first. Inactive teams (relegated
+ * LPL clubs) are excluded, same as everywhere else a team list is
+ * shown — surfacing one here would just lead to a dead end, since
+ * there's no page for a team that isn't currently competing. Empty
+ * query returns nothing rather than every team, so a freshly-opened
+ * search screen starts blank instead of dumping the full roster list. */
+export function searchTeams(query: string): Array<{ id: string; team: Team; region: Region }> {
+  const trimmed = query.trim().toLowerCase();
+  if (!trimmed) return [];
+
+  const results: Array<{ id: string; team: Team; region: Region }> = [];
+  for (const region of REGIONS) {
+    for (const id of getTeamIdsForRegion(region)) {
+      const team = data.teams[id];
+      if (!team?.active) continue;
+      if (team.name.toLowerCase().includes(trimmed)) results.push({ id, team, region });
+    }
+  }
+
+  // Teams whose name STARTS with the query surface first (searching "fn"
+  // should put "Fnatic" ahead of a team that merely contains "fn"
+  // somewhere in the middle of its name), then alphabetical within each
+  // group.
+  return results.sort((a, b) => {
+    const aStarts = a.team.name.toLowerCase().startsWith(trimmed);
+    const bStarts = b.team.name.toLowerCase().startsWith(trimmed);
+    if (aStarts !== bStarts) return aStarts ? -1 : 1;
+    return a.team.name.localeCompare(b.team.name);
+  });
+}

@@ -52,10 +52,12 @@ export function RegionHomeScreen({ navigation, region }: Props) {
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       <AppHeader
         title={region}
-        // Settings lives in the root Stack, not this nested RegionStack —
-        // CommonActions.navigate bubbles up automatically to find it, same
-        // as DrawerActions.openDrawer() does for the Drawer below.
+        // Settings and Search both live in the root Stack, not this
+        // nested RegionStack — CommonActions.navigate bubbles up
+        // automatically to find them, same as DrawerActions.openDrawer()
+        // does for the Drawer below.
         onOpenSettings={() => navigation.dispatch(CommonActions.navigate('Settings'))}
+        onOpenSearch={() => navigation.dispatch(CommonActions.navigate('Search'))}
         onOpenRegions={() => navigation.dispatch(DrawerActions.openDrawer())}
       />
       <ScrollView

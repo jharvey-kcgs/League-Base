@@ -13,6 +13,14 @@ export type RootStackParamList = {
   SettingsTheme: undefined;
   SettingsAbout: undefined;
   SettingsFAQ: undefined;
+  Search: undefined;
+  /** A team's page, reached from Search rather than by browsing a
+   * region — same content as RegionStackParamList's own 'Team', reusing
+   * the same TeamScreen component. Named differently so it's clear at a
+   * glance which navigator a given navigate('...') call is actually
+   * targeting; there's no actual collision either way; each param list
+   * is independently scoped. */
+  TeamDetail: { teamId: string };
 };
 
 // Drawer: "My Team" (favorite team's Home) plus one entry per region, each
