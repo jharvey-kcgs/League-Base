@@ -850,25 +850,29 @@ async function fetchSwissBracketData(
 }
 
 /** Confirmed working against LCP's real Play-Ins data (2026 Split 3) —
- * Round 1's two real matchups (MVK vs CFO, DFM vs GZ) plus Round 2's
- * partial pairing (TSW already placed, one still-TBD slot) matched this
- * exactly, including the round numbering lining up with the official
- * page's own "Round 1"/"Round 2" labels.
+ * initially matched Round 1's two matchups and Round 2's partial pairing
+ * exactly. That confirmation had a real gap, though: it only ever
+ * checked this while every match was still fully unresolved. The
+ * original design used TBD-slot count alone to infer round order (fewer
+ * TBD teams = an earlier, more-determined round) — which is a real
+ * signal, but not a durable one. The moment CFO actually won its Round 1
+ * match, the Round 2 slot against TSW resolved from "TBD" to "CFO" and
+ * had zero TBD teams too, making it indistinguishable from Round 1's own
+ * matches under that heuristic alone — a real bug (reported as every
+ * Play-Ins match flattening into one "Round 1"), not a hypothetical.
  *
- * The real limitation, stated plainly rather than papered over:
+ * Fixed by using confirmed connectivity (KNOWN_MATCH_CONNECTIONS) as the
+ * primary signal whenever it exists — a real topological fact
+ * independent of resolution status — and falling back to the original
+ * TBD-count heuristic only for matches with no confirmed predecessor.
+ *
+ * The real limitation, still stated plainly rather than papered over:
  * `previousMatchIds` is confirmed empty on every match checked so far,
- * even this far into the tournament with real teams already seeded in —
- * so there's no reliable way to draw an actual connecting line from a
- * specific Round 1 match to the Round 2 match its winner advances into.
- * What CAN be trusted: which round a match belongs to. A match where
- * neither team is `"TBD"` is a fully determined pairing — it can only be
- * an earlier round, since a later round's participants aren't knowable
- * until an earlier round resolves. A match with exactly one `"TBD"` slot
- * is one round further out (waiting on one specific other match to
- * finish); two `"TBD"` slots, further still. Sorting on that count and
- * grouping matches with the same count into the same round produces
- * correct columns without asserting a specific fill-in that hasn't
- * actually been confirmed yet.
+ * even well into the tournament with real results in — so nothing here
+ * is read from the API's own structure; every connection is a directly
+ * confirmed, hand-entered fact (see KNOWN_MATCH_CONNECTIONS below), and
+ * the TBD-count fallback remains exactly as fragile as described above
+ * for anything not yet confirmed that way.
  *
  * Renders every round as a single group (no record-label concept the
  * way Swiss has) — BracketRounds already hides an empty recordLabel, so
@@ -895,6 +899,19 @@ const KNOWN_MATCH_CONNECTIONS: Record<string, string> = {
 };
 
 function fetchEliminationBracketData(stageName: string, stage: RawStage): BracketData {
+  // A stage with a real, populated rankings table (LCS/LEC/LCK/LPL/CBLOL's
+  // regular season, every one of them) is NOT bracket-shaped at all — it's
+  // the same "does this section have a pre-built ranked table" signal
+  // already used everywhere else to detect a genuine Swiss/elimination
+  // stage (empty rankings) vs a normal round-robin one. Missing this
+  // check here was a real bug: every regular-season match has two known,
+  // non-"TBD" teams, so hasAnyRealMatch below was true for literally
+  // every region's regular season, and they all collapsed into one giant
+  // "Round 1" — a real user-reported bug (a wall-of-text "Regular Season
+  // Bracket" appearing for every non-Swiss region), not a hypothetical.
+  const isBracketShaped = stage.sections.every((s) => (s.rankings ?? []).length === 0);
+  if (!isBracketShaped) return { stageName, rounds: [] };
+
   const matches = stage.sections.flatMap((s) => s.matches ?? []);
 
   const tbdCount = (m: RawStandingsMatch) => m.teams.filter((t) => !t || t.code === 'TBD').length;
@@ -905,12 +922,55 @@ function fetchEliminationBracketData(stageName: string, stage: RawStage): Bracke
   const hasAnyRealMatch = matches.some((m) => tbdCount(m) < 2);
   if (!hasAnyRealMatch) return { stageName, rounds: [] };
 
-  const byTbdCount = new Map<number, BracketMatch[]>();
-  for (const match of matches) {
-    const [teamA, teamB] = match.teams;
+  // Matches that are a confirmed feedsInto TARGET of some other match are
+  // NOT round 1, no matter how many TBD slots they currently show — a
+  // real bug, not hypothetical: once CFO won its Round 1 match, the
+  // Round 2 slot against TSW resolved from "TBD" to "CFO" and had zero
+  // TBD teams, identical under the old TBD-count-only heuristic to
+  // Round 1's own already-resolved matches. All three collapsed into one
+  // "Round 1" as a result. Confirmed connectivity is used here whenever
+  // it exists, since it's a real topological fact independent of
+  // resolution status; TBD count is only the fallback for matches with
+  // no confirmed predecessor.
+  const targetMatchIds = new Set(Object.values(KNOWN_MATCH_CONNECTIONS));
+
+  const withoutPredecessor = matches.filter((m) => !targetMatchIds.has(m.id));
+  const byTbdCount = new Map<number, RawStandingsMatch[]>();
+  for (const match of withoutPredecessor) {
     const count = tbdCount(match);
     if (!byTbdCount.has(count)) byTbdCount.set(count, []);
-    byTbdCount.get(count)!.push({
+    byTbdCount.get(count)!.push(match);
+  }
+  const sortedCounts = [...byTbdCount.keys()].sort((a, b) => a - b);
+  const roundNumberByMatchId = new Map<string, number>();
+  sortedCounts.forEach((count, i) => {
+    for (const m of byTbdCount.get(count)!) roundNumberByMatchId.set(m.id, i + 1);
+  });
+
+  // Matches WITH a confirmed predecessor land one round after whichever
+  // of their sources resolves latest — correct regardless of how many
+  // TBD slots they currently have. A real 2-into-1 merge, if one ever
+  // exists, is handled the same way: both sources contribute, and the
+  // later of the two determines the destination's round.
+  for (const match of matches) {
+    if (!targetMatchIds.has(match.id)) continue;
+    const sourceIds = Object.entries(KNOWN_MATCH_CONNECTIONS)
+      .filter(([, dest]) => dest === match.id)
+      .map(([src]) => src);
+    const sourceRounds = sourceIds.map((id) => roundNumberByMatchId.get(id)).filter((r): r is number => r !== undefined);
+    // Falls back to round 2 only if a source's own round genuinely
+    // couldn't be determined — shouldn't happen in practice, since a
+    // confirmed connection's source is always one of this stage's own
+    // matches, but a bracket shouldn't crash over it either way.
+    roundNumberByMatchId.set(match.id, sourceRounds.length > 0 ? Math.max(...sourceRounds) + 1 : 2);
+  }
+
+  const byRound = new Map<number, BracketMatch[]>();
+  for (const match of matches) {
+    const [teamA, teamB] = match.teams;
+    const roundNumber = roundNumberByMatchId.get(match.id)!;
+    if (!byRound.has(roundNumber)) byRound.set(roundNumber, []);
+    byRound.get(roundNumber)!.push({
       matchId: match.id,
       state: match.state,
       teamA: toBracketTeam(teamA),
@@ -921,10 +981,10 @@ function fetchEliminationBracketData(stageName: string, stage: RawStage): Bracke
     });
   }
 
-  const rounds = [...byTbdCount.entries()]
-    .sort((a, b) => a[0] - b[0]) // fewest TBD slots first — the most-determined, earliest round
-    .map(([, roundMatches], i) => ({
-      roundNumber: i + 1,
+  const rounds = [...byRound.entries()]
+    .sort((a, b) => a[0] - b[0])
+    .map(([roundNumber, roundMatches]) => ({
+      roundNumber,
       groups: [{ recordLabel: '', matches: roundMatches }],
     }));
 

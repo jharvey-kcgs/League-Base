@@ -21,21 +21,14 @@ export function BracketRounds({ region }: { region: Region }) {
   // Position of every rendered match card, relative to contentRef below —
   // populated as each MatchCard reports its own measured position. Used
   // to draw the connector lines, which should point at wherever a card
-  // ACTUALLY is right now, including any centering shift already applied.
+  // ACTUALLY is right now, including any spacer-driven shift.
   const [cardRects, setCardRects] = useState<Record<string, CardRect>>({});
   // Each card's FIRST-EVER measured position specifically, captured once
-  // and never updated again afterward — the actual fix for a real bounce
-  // bug. Centering used to compute its offset from cardRects, which
-  // already reflected whatever offset was currently applied — so "how
-  // far do I need to move" was being computed from a position that
-  // already included the previous answer to that exact question. Once a
-  // card reached the right spot, that math naturally produced "shift by
-  // 0" — but since the offset was being SET as marginTop rather than
-  // accumulated, "shift by 0" removed the shift that got it there,
-  // snapping it back and repeating forever. naturalRects is a stable
-  // baseline immune to that: it's set once, from the card's true
-  // pre-shift position, and centering math always reads from it instead
-  // of the live, possibly-already-shifted cardRects.
+  // and never updated again — the stable baseline centering math reads
+  // from, rather than the live cardRects (which already reflects
+  // whatever shift is currently applied, and caused a real bounce bug
+  // the one time this fed back into itself). Verified to converge to a
+  // stable value across multiple render cycles before trusting it again.
   const [naturalRects, setNaturalRects] = useState<Record<string, CardRect>>({});
   const contentRef = useRef<View>(null);
 
@@ -97,29 +90,33 @@ export function BracketRounds({ region }: { region: Region }) {
 
   // Every match that has a confirmed feedsInto target, paired with that
   // target's own rect once both are actually measured — connectors only
-  // render once BOTH ends have a real position, never a guessed one. Uses
-  // the LIVE cardRects, not naturalRects — the line should point at
-  // wherever a card actually is right now, shift included.
+  // render once BOTH ends have a real position, never a guessed one.
   const connectors = rounds
     .flatMap((r) => r.groups.flatMap((g) => g.matches))
     .filter((m) => m.feedsInto)
     .map((m) => ({ from: cardRects[m.matchId], to: cardRects[m.feedsInto!] }))
     .filter((c): c is { from: CardRect; to: CardRect } => !!c.from && !!c.to);
 
-  // Shifts a match down or up so its vertical center lines up with the
-  // midpoint of the entire previous round's span — the "boxed in the
-  // middle" look from the official page, based on the whole previous
-  // round rather than just this match's specific confirmed feedsInto
-  // source. Deliberately reads from naturalRects (stable, set once),
-  // never cardRects (live, already reflects any shift already applied)
-  // — see naturalRects' own comment for why that distinction is the
-  // actual fix for a real bounce bug hit here before. Scoped to only a
+  // Height of a real spacer element rendered directly above a lone
+  // later-round match, pushing it down to align with the midpoint of the
+  // entire previous round's span — the "boxed in the middle" look from
+  // the official page. A REAL sibling element, not marginTop — a
+  // previous attempt used marginTop and produced a card that rendered
+  // off-screen, for a reason never fully confirmed; an actual spacer
+  // reliably contributes to the column's real layout height regardless.
+  // Deliberately reads from naturalRects (stable, set once), never
+  // cardRects (live, already reflects any shift already applied) — using
+  // the live value caused a separate, real bounce bug before. Clamped to
+  // never go negative: shifting UP isn't a case this needs to support
+  // for any bracket built so far, and a negative spacer height isn't
+  // meaningful anyway — worst case with the clamp is no shift at all,
+  // never a card pushed off the top of the screen. Scoped to only a
   // match that's alone in its group: repositioning one match among
   // several siblings would need to also reflow the others to avoid
   // overlapping them, a meaningfully harder problem this doesn't attempt
   // yet — every bracket built so far only ever needed this for a lone
   // match anyway (Play-Ins' Round 2 has exactly one).
-  const centeringOffset: Record<string, number> = {};
+  const spacerHeight: Record<string, number> = {};
   for (let i = 1; i < rounds.length; i++) {
     const round = rounds[i];
     const previousRoundMatchIds = rounds[i - 1].groups.flatMap((g) => g.matches.map((m) => m.matchId));
@@ -136,8 +133,8 @@ export function BracketRounds({ region }: { region: Region }) {
       const myNaturalRect = naturalRects[match.matchId];
       if (!myNaturalRect) continue;
       const myNaturalCenterY = myNaturalRect.y + myNaturalRect.height / 2;
-      const offset = desiredCenterY - myNaturalCenterY;
-      if (Math.abs(offset) >= 0.5) centeringOffset[match.matchId] = offset;
+      const offset = Math.max(0, desiredCenterY - myNaturalCenterY);
+      if (offset >= 0.5) spacerHeight[match.matchId] = offset;
     }
   }
 
@@ -160,13 +157,10 @@ export function BracketRounds({ region }: { region: Region }) {
                     ) : null}
                     <View style={styles.matchList}>
                       {group.matches.map((match) => (
-                        <MatchCard
-                          key={match.matchId}
-                          match={match}
-                          leagueSlug={leagueSlug}
-                          onMeasured={reportCardRect}
-                          centerOffset={centeringOffset[match.matchId] ?? 0}
-                        />
+                        <React.Fragment key={match.matchId}>
+                          {spacerHeight[match.matchId] ? <View style={{ height: spacerHeight[match.matchId] }} /> : null}
+                          <MatchCard match={match} leagueSlug={leagueSlug} onMeasured={reportCardRect} />
+                        </React.Fragment>
                       ))}
                     </View>
                   </View>
@@ -210,12 +204,10 @@ function MatchCard({
   match,
   leagueSlug,
   onMeasured,
-  centerOffset,
 }: {
   match: BracketMatch;
   leagueSlug: string;
   onMeasured: (matchId: string, ref: React.RefObject<View | null>) => void;
-  centerOffset: number;
 }) {
   const { colors } = useTheme();
   const isLive = match.state === 'inProgress';
@@ -227,13 +219,7 @@ function MatchCard({
   // Re-measures on every layout pass, not just once — a card's height can
   // genuinely change (the LIVE label appearing/disappearing, a long team
   // code wrapping differently), and a connector drawn from a stale
-  // measurement would visibly point at the wrong spot. Also captures the
-  // one extra layout pass centerOffset itself causes when first applied —
-  // that update only ever touches cardRects (naturalRects is already
-  // locked in from the earlier, pre-shift measurement), so it can't
-  // change centerOffset's own computed value on the next render. See
-  // naturalRects' own comment for why that distinction is what actually
-  // keeps this from bouncing.
+  // measurement would visibly point at the wrong spot.
   const handleLayout = (_e: LayoutChangeEvent) => {
     if (match.feedsInto || cardRef.current) onMeasured(match.matchId, cardRef);
   };
@@ -242,7 +228,7 @@ function MatchCard({
     <View
       ref={cardRef}
       onLayout={handleLayout}
-      style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border, marginTop: centerOffset }]}
+      style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}
     >
       <TeamRow code={match.teamA.code} score={match.scoreA} highlighted={aWon} showScore={isDone} />
       <View style={[styles.divider, { backgroundColor: colors.border }]} />
