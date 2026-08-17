@@ -586,7 +586,7 @@ export interface BracketMatch {
   teamB: BracketTeam;
   scoreA: number;
   scoreB: number;
-  /** matchId of the specific match this one's winner advances into, when
+  /** matchId of the specific match this one's WINNER advances into, when
    * known. NOT derived from `previousMatchIds` — that's confirmed empty
    * on every match checked so far, even well into a real tournament with
    * real teams seeded in. Populated instead by direct, explicit
@@ -595,6 +595,15 @@ export interface BracketMatch {
    * specific bracket, not a general rule to assume holds for any other
    * one without the same direct confirmation. */
   feedsInto?: string;
+  /** matchId the LOSER advances into instead — only meaningful for a
+   * true double-elimination bracket (LCP Playoffs), where a match can
+   * have two different destinations depending on outcome. Play-Ins never
+   * needed this (a single-elimination shape only ever has one
+   * destination), so it's a separate, optional field rather than folded
+   * into feedsInto — keeps that field's existing meaning ("on win")
+   * unchanged for every place already relying on it. Same confirmation
+   * discipline as feedsInto: see KNOWN_MATCH_CONNECTIONS below. */
+  feedsIntoOnLoss?: string;
 }
 
 export interface BracketMatchGroup {
@@ -689,16 +698,18 @@ async function fetchActiveStage(tournamentId: string): Promise<RawStage | null> 
     throw err;
   }
 
-  // TEMPORARY — Swiss just genuinely finished (GAM beat DCG 3-1 in the
-  // last possible Swiss match, GAM now the 4th qualified team). Checking
-  // two things with a fresh, current read: whether GAM now fills
-  // Play-Ins' previously-TBD slot next to Team Secret Whales (an early
-  // test of the seeding-match theory, even before Friday's CFO/MVK
-  // result), and whether previousMatchIds has started populating for
-  // Play-Ins matches now that real results exist upstream of them (it
-  // was confirmed empty every time checked before, but always while
-  // Swiss itself was still incomplete). Logging every stage's complete,
-  // unfiltered matches — remove once checked.
+  // TEMPORARY — LCP Playoffs has real Round 1 matches now (MVK vs CFO,
+  // GAM vs TSW), but this is a genuine double-elimination bracket, not a
+  // simple single-elimination one like Play-Ins was: each Round 1 match
+  // has TWO different destinations depending on who wins (winner ->
+  // Upper Bracket Finals, loser -> Upper Bracket Semifinals), and there
+  // are four separate downstream stages (Upper Bracket Finals, Upper
+  // Bracket Semifinals, Lower Bracket Finals, Finals) that ALL currently
+  // look identical — every one of them is still "TBD vs TBD" with no
+  // way to tell them apart by content alone. The real match IDs from
+  // this log are the only way to build a correct KNOWN_MATCH_CONNECTIONS
+  // entry for each one. Logging every stage's complete, unfiltered
+  // matches — remove once the Playoffs match IDs are confirmed.
   if (__DEV__) {
     for (const stage of data.data.standings[0]?.stages ?? []) {
       console.log(`[fetchActiveStage] stage "${stage.name}":`, JSON.stringify(stage.sections, null, 2));
@@ -878,7 +889,7 @@ async function fetchSwissBracketData(
  * way Swiss has) — BracketRounds already hides an empty recordLabel, so
  * this reuses that component with zero changes needed. */
 /** Explicit, directly-confirmed match connections — matchId -> matchId of
- * the match its winner advances into. NOT derived from the API (which
+ * the match its WINNER advances into. NOT derived from the API (which
  * has confirmed nothing usable for this — see BracketMatch.feedsInto's
  * own comment); each entry here was confirmed by directly viewing the
  * official bracket page's own rendered connector lines, one specific
@@ -893,9 +904,81 @@ async function fetchSwissBracketData(
  * Secret Whales (id 116769725389404185) — winner takes the open slot.
  * DetonatioN FocusMe vs Ground Zero Gaming (116769725389404179) was
  * directly confirmed to have NO connection drawn on the official page —
- * deliberately absent from this table, not an oversight. */
+ * deliberately absent from this table, not an oversight.
+ *
+ * LCP Playoffs entries added 2026-08-16 — a genuinely different
+ * situation worth being explicit about. The bracket's real SHAPE (which
+ * stage feeds which, on win vs on loss) is directly confirmed — both
+ * from the official page's own rendered layout and from the user's own
+ * explicit, detailed description of the routing rules. What is NOT
+ * independently confirmed is which of the four still-fully-TBD-vs-TBD
+ * match IDs corresponds to which of the four labeled stages — nothing in
+ * the raw data carries that mapping, so this uses the match IDs'
+ * sequential order matched against the official page's visual layout
+ * order (Upper Bracket Finals, then Upper Bracket Semifinals, then Lower
+ * Bracket Finals, then Finals) as a reasonable, but not independently
+ * verified, inference. Worth confirming for real the moment Round 1
+ * actually resolves and a real team's name appears in one of these —
+ * whichever stage it shows up under either confirms this mapping or
+ * reveals it needs correcting. */
 const KNOWN_MATCH_CONNECTIONS: Record<string, string> = {
   '116769725389404173': '116769725389404185',
+  // LCP Playoffs — Round 1 winners both advance to Upper Bracket Finals
+  '116769742220455389': '116769742220520937', // CTBC Flying Oyster vs MVK Esports -> Upper Bracket Finals
+  '116769742220520931': '116769742220520937', // Team Secret Whales vs GAM Esports -> Upper Bracket Finals
+  // Upper Bracket Finals winner advances to Finals
+  '116769742220520937': '116769742220520955',
+  // Upper Bracket Semifinals winner advances to Lower Bracket Finals
+  '116769742220520943': '116769742220520949',
+  // Lower Bracket Finals winner advances to Finals
+  '116769742220520949': '116769742220520955',
+};
+
+/** Same discipline as KNOWN_MATCH_CONNECTIONS above, but for the LOSER's
+ * destination — only meaningful for a genuine double-elimination bracket
+ * (LCP Playoffs), where losing doesn't mean immediately eliminated. A
+ * match with no entry here means its loser is simply eliminated, not
+ * that the connection is unknown — Upper Bracket Semifinals and Lower
+ * Bracket Finals both deliberately have no entry for exactly this
+ * reason, matching the confirmed real rule (lose either of those two and
+ * the run is over). Same inferred-ID-mapping caveat as
+ * KNOWN_MATCH_CONNECTIONS' own comment applies equally here. */
+const KNOWN_LOSER_CONNECTIONS: Record<string, string> = {
+  // LCP Playoffs — Round 1 losers both drop to Upper Bracket Semifinals
+  '116769742220455389': '116769742220520943', // CTBC Flying Oyster vs MVK Esports -> Upper Bracket Semifinals
+  '116769742220520931': '116769742220520943', // Team Secret Whales vs GAM Esports -> Upper Bracket Semifinals
+  // Upper Bracket Finals' loser drops to Lower Bracket Finals
+  '116769742220520937': '116769742220520949',
+};
+
+/** Explicit, directly-confirmed stage name for a specific matchId — same
+ * discipline as KNOWN_MATCH_CONNECTIONS above, and the same reason:
+ * nothing in the raw data itself carries a per-match label, so this is
+ * filled in only from directly viewing the official bracket page, one
+ * confirmed match at a time. A round only gets roundLabel set in the
+ * output when EVERY match in it has a confirmed entry here — a round
+ * with even one unconfirmed match falls back to "ROUND N" rather than
+ * risk a half-labeled, half-guessed row.
+ *
+ * Confirmed 2026-08-16, LCP Playoffs Round 1, by directly viewing the
+ * official bracket page: both real Round 1 matches (CTBC Flying Oyster
+ * vs MVK Esports, id 116769742220455389; Team Secret Whales vs GAM
+ * Esports, id 116769742220520931) sit under the "Lower Bracket -
+ * Semifinals" heading, despite being the tournament's actual first
+ * round — an intentionally non-obvious label, not a typo.
+ *
+ * The remaining four labels (also confirmed real, directly visible on
+ * the official page) are mapped to specific match IDs using the same
+ * inferred sequential-order assumption described in
+ * KNOWN_MATCH_CONNECTIONS' own comment — the label names themselves
+ * aren't in question, only which raw ID each one corresponds to. */
+const KNOWN_ROUND_LABELS: Record<string, string> = {
+  '116769742220455389': 'Lower Bracket Semifinals',
+  '116769742220520931': 'Lower Bracket Semifinals',
+  '116769742220520937': 'Upper Bracket Finals',
+  '116769742220520943': 'Upper Bracket Semifinals',
+  '116769742220520949': 'Lower Bracket Finals',
+  '116769742220520955': 'Finals',
 };
 
 function fetchEliminationBracketData(stageName: string, stage: RawStage): BracketData {
@@ -916,25 +999,30 @@ function fetchEliminationBracketData(stageName: string, stage: RawStage): Bracke
 
   const tbdCount = (m: RawStandingsMatch) => m.teams.filter((t) => !t || t.code === 'TBD').length;
 
-  // A stage where every match is still fully TBD-vs-TBD (Playoffs, right
-  // now) has nothing real to show yet — same "nothing to show" signal
-  // used everywhere else, rather than a bracket full of blank cards.
-  const hasAnyRealMatch = matches.some((m) => tbdCount(m) < 2);
+  // A stage where every match is still fully TBD-vs-TBD (Playoffs' four
+  // downstream stages, before Round 1 resolves) has nothing real to show
+  // yet — same "nothing to show" signal used everywhere else, rather
+  // than a bracket full of blank cards. A match with a confirmed entry
+  // in KNOWN_ROUND_LABELS is the one exception: its identity is known
+  // even while its actual teams aren't yet, matching what was directly
+  // confirmed from the official page for LCP Playoffs.
+  const hasAnyRealMatch = matches.some((m) => tbdCount(m) < 2 || KNOWN_ROUND_LABELS[m.id]);
   if (!hasAnyRealMatch) return { stageName, rounds: [] };
+  const confirmedMatches = matches.filter((m) => tbdCount(m) < 2 || KNOWN_ROUND_LABELS[m.id]);
 
-  // Matches that are a confirmed feedsInto TARGET of some other match are
-  // NOT round 1, no matter how many TBD slots they currently show — a
-  // real bug, not hypothetical: once CFO won its Round 1 match, the
-  // Round 2 slot against TSW resolved from "TBD" to "CFO" and had zero
-  // TBD teams, identical under the old TBD-count-only heuristic to
-  // Round 1's own already-resolved matches. All three collapsed into one
-  // "Round 1" as a result. Confirmed connectivity is used here whenever
-  // it exists, since it's a real topological fact independent of
-  // resolution status; TBD count is only the fallback for matches with
-  // no confirmed predecessor.
-  const targetMatchIds = new Set(Object.values(KNOWN_MATCH_CONNECTIONS));
+  // Matches that are a confirmed feedsInto (win) or feedsIntoOnLoss TARGET
+  // of some other match are NOT round 1, no matter how many TBD slots
+  // they currently show — a real bug, not hypothetical: once CFO won its
+  // Round 1 match, the Round 2 slot against TSW resolved from "TBD" to
+  // "CFO" and had zero TBD teams, identical under the old TBD-count-only
+  // heuristic to Round 1's own already-resolved matches. All three
+  // collapsed into one "Round 1" as a result. Confirmed connectivity is
+  // used here whenever it exists, since it's a real topological fact
+  // independent of resolution status; TBD count is only the fallback for
+  // matches with no confirmed predecessor at all.
+  const targetMatchIds = new Set([...Object.values(KNOWN_MATCH_CONNECTIONS), ...Object.values(KNOWN_LOSER_CONNECTIONS)]);
 
-  const withoutPredecessor = matches.filter((m) => !targetMatchIds.has(m.id));
+  const withoutPredecessor = confirmedMatches.filter((m) => !targetMatchIds.has(m.id));
   const byTbdCount = new Map<number, RawStandingsMatch[]>();
   for (const match of withoutPredecessor) {
     const count = tbdCount(match);
@@ -948,25 +1036,43 @@ function fetchEliminationBracketData(stageName: string, stage: RawStage): Bracke
   });
 
   // Matches WITH a confirmed predecessor land one round after whichever
-  // of their sources resolves latest — correct regardless of how many
-  // TBD slots they currently have. A real 2-into-1 merge, if one ever
-  // exists, is handled the same way: both sources contribute, and the
-  // later of the two determines the destination's round.
-  for (const match of matches) {
-    if (!targetMatchIds.has(match.id)) continue;
-    const sourceIds = Object.entries(KNOWN_MATCH_CONNECTIONS)
-      .filter(([, dest]) => dest === match.id)
-      .map(([src]) => src);
-    const sourceRounds = sourceIds.map((id) => roundNumberByMatchId.get(id)).filter((r): r is number => r !== undefined);
-    // Falls back to round 2 only if a source's own round genuinely
-    // couldn't be determined — shouldn't happen in practice, since a
-    // confirmed connection's source is always one of this stage's own
-    // matches, but a bracket shouldn't crash over it either way.
-    roundNumberByMatchId.set(match.id, sourceRounds.length > 0 ? Math.max(...sourceRounds) + 1 : 2);
+  // of their sources resolves latest — a real 2-into-1 merge (Round 1's
+  // two winners both feeding the same Upper Bracket Finals match here)
+  // is handled the same way: both sources contribute, and the later of
+  // the two determines the destination's round.
+  //
+  // A single pass over matches isn't enough once a chain runs several
+  // stages deep — Lower Bracket Finals depends on BOTH Upper Bracket
+  // Finals' round AND Upper Bracket Semifinals' round, and Finals
+  // depends on Lower Bracket Finals' round in turn. Whichever of those
+  // gets processed first in plain array order might not have its own
+  // predecessors resolved yet. Looping until nothing changes (a genuine
+  // fixed-point iteration, capped at the match count as a safe upper
+  // bound on how deep any real chain could possibly go) resolves this
+  // correctly regardless of processing order.
+  let changed = true;
+  let iterations = 0;
+  while (changed && iterations < matches.length) {
+    changed = false;
+    iterations++;
+    for (const match of confirmedMatches) {
+      if (!targetMatchIds.has(match.id) || roundNumberByMatchId.has(match.id)) continue;
+      const sourceIds = [
+        ...Object.entries(KNOWN_MATCH_CONNECTIONS).filter(([, dest]) => dest === match.id).map(([src]) => src),
+        ...Object.entries(KNOWN_LOSER_CONNECTIONS).filter(([, dest]) => dest === match.id).map(([src]) => src),
+      ];
+      const sourceRounds = sourceIds.map((id) => roundNumberByMatchId.get(id)).filter((r): r is number => r !== undefined);
+      // Only assign once every source has resolved — an incomplete set
+      // here means a source deeper in the chain hasn't been assigned
+      // yet, not that this match has no real predecessor at all.
+      if (sourceRounds.length !== sourceIds.length || sourceIds.length === 0) continue;
+      roundNumberByMatchId.set(match.id, Math.max(...sourceRounds) + 1);
+      changed = true;
+    }
   }
 
   const byRound = new Map<number, BracketMatch[]>();
-  for (const match of matches) {
+  for (const match of confirmedMatches) {
     const [teamA, teamB] = match.teams;
     const roundNumber = roundNumberByMatchId.get(match.id)!;
     if (!byRound.has(roundNumber)) byRound.set(roundNumber, []);
@@ -978,15 +1084,34 @@ function fetchEliminationBracketData(stageName: string, stage: RawStage): Bracke
       scoreA: teamA?.result?.gameWins ?? 0,
       scoreB: teamB?.result?.gameWins ?? 0,
       feedsInto: KNOWN_MATCH_CONNECTIONS[match.id],
+      feedsIntoOnLoss: KNOWN_LOSER_CONNECTIONS[match.id],
     });
   }
 
   const rounds = [...byRound.entries()]
     .sort((a, b) => a[0] - b[0])
-    .map(([roundNumber, roundMatches]) => ({
-      roundNumber,
-      groups: [{ recordLabel: '', matches: roundMatches }],
-    }));
+    .map(([roundNumber, roundMatches]) => {
+      // Group by each match's OWN confirmed label, not by round alone —
+      // the actual bug this fixes: Round 1 happens to have one label
+      // shared by both its matches (Lower Bracket Semifinals), but
+      // Round 2 has TWO different, independent stages (Upper Bracket
+      // Finals, Upper Bracket Semifinals) that share the same round
+      // number without being the same stage. Grouping by round number
+      // alone lumped them into one flat, unlabeled group — this groups
+      // by label instead, so each real stage gets its own labeled
+      // section even when two land in the same round. A match with no
+      // confirmed label (nothing entered in KNOWN_ROUND_LABELS yet)
+      // falls into its own group with an empty recordLabel, same as
+      // Swiss's Round 1 always has.
+      const byLabel = new Map<string, BracketMatch[]>();
+      for (const match of roundMatches) {
+        const label = KNOWN_ROUND_LABELS[match.matchId] ?? '';
+        if (!byLabel.has(label)) byLabel.set(label, []);
+        byLabel.get(label)!.push(match);
+      }
+      const groups = [...byLabel.entries()].map(([recordLabel, matches]) => ({ recordLabel, matches }));
+      return { roundNumber, groups };
+    });
 
   return { stageName, rounds };
 }
