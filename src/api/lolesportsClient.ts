@@ -269,7 +269,18 @@ export function vodUrl(parameter: string, provider: string): string {
  * the current split — without this date-range filter, a team's "record"
  * silently became its cumulative record across every split played this
  * year (e.g. G2 showing 9-2 on the first day of a new split, when it
- * should read 0-0 until they'd actually played a game in it). */
+ * should read 0-0 until they'd actually played a game in it).
+ *
+ * Confirmed 2026-08-24: this can genuinely disagree with Overall
+ * Standings (which reads from getStandings, a separate endpoint) by a
+ * couple of games at any given moment — for LPL's Team WE specifically,
+ * this returned exactly 12 real, completed, resolved-outcome games,
+ * while getStandings showed a 7-7 (14-game) record. Checked directly
+ * against the official site's own real game count at the time: 12 was
+ * actually correct, and getStandings was the one temporarily ahead of
+ * itself — not the reverse, which was the first, wrong assumption here.
+ * Neither endpoint is reliably "the current one" in general; this was
+ * confirmed real Riot-side data, not a bug in this function. */
 export async function fetchScheduleForTeam(region: Region, teamCode: string): Promise<ScheduleEvent[]> {
   const leagueId = await resolveLeagueId(region);
   if (!leagueId) return [];
@@ -979,6 +990,14 @@ const KNOWN_ROUND_LABELS: Record<string, string> = {
   '116769742220520943': 'Upper Bracket Semifinals',
   '116769742220520949': 'Lower Bracket Finals',
   '116769742220520955': 'Finals',
+  // LPL Play-in "Knights Rivals" (2026-08-29) — confirmed directly from
+  // the official page: a standalone one-day, two-match stage with no
+  // continuation into a later round. Both matches share the same
+  // "Finals" label, so — unlike LCP Playoffs' four indistinguishable
+  // placeholders — there's no ambiguity about which raw ID gets which
+  // label here even while both are still fully TBD-vs-TBD.
+  '116566921179138936': 'Finals',
+  '116566921179204478': 'Finals',
 };
 
 function fetchEliminationBracketData(stageName: string, stage: RawStage): BracketData {
