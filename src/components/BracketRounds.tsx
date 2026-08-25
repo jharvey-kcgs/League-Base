@@ -192,7 +192,7 @@ export function BracketRounds({ region }: { region: Region }) {
                 {!allGroupsLabeled ? (
                   <AppText
                     weight="bold"
-                    style={[styles.roundHeader, { color: colors.textMuted, position: 'absolute', left: x, top: 0 }]}
+                    style={[styles.roundHeader, { color: colors.accentReadable, position: 'absolute', left: x, top: 0 }]}
                   >
                     {`ROUND ${round.roundNumber}`}
                   </AppText>
