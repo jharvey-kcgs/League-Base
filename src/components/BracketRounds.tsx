@@ -12,6 +12,13 @@ import type { Region } from '../types/team';
 // estimate. See MatchCard/styles for where each one comes from.
 const CARD_HEIGHT = 71; // a normal (non-LIVE) match card's real rendered height
 const LABEL_HEIGHT = 19; // observed offset from a group's top to its card's top, when a recordLabel is shown above it
+// Same value as LABEL_HEIGHT — a reasonable estimate given the generic
+// "ROUND N" header uses similar small, bold text styling, but NOT yet
+// directly measured the way LABEL_HEIGHT was (that came from a real
+// diagnostic dump; this bug meant the generic header had never actually
+// rendered without overlapping anything before, so there was nothing to
+// measure it against). Worth confirming for real against a live render.
+const HEADER_HEIGHT = 19;
 const GROUP_GAP = 14; // groupList's own vertical gap between groups within one round
 const MATCH_GAP = 8; // matchList's own vertical gap between matches within one group
 const COLUMN_WIDTH = 150;
@@ -64,7 +71,17 @@ function computePositions(rounds: BracketRound[]): Map<string, Position> {
 
   rounds.forEach((round, roundIndex) => {
     const x = roundIndex * (COLUMN_WIDTH + COLUMN_GAP);
-    let cascadeY = 0; // where the NEXT group in this column naturally starts, given every group above it so far
+    // A round showing the generic "ROUND N" header (not every group has
+    // its own confirmed recordLabel) needs its cascade to start BELOW
+    // that header's own height — otherwise the header and the first
+    // card both land at the column's true top (y=0) and directly
+    // overlap. A real, confirmed bug: every stage this was built and
+    // tested against (LCP Playoffs) always had confirmed labels by the
+    // time it launched, so this generic-header path was never actually
+    // exercised. Play-Ins (which never gets confirmed labels — only
+    // Playoffs-style stages do) hits it on every single region.
+    const allGroupsLabeled = round.groups.every((g) => g.recordLabel);
+    let cascadeY = allGroupsLabeled ? 0 : HEADER_HEIGHT; // where the NEXT group in this column naturally starts, given every group above it so far
 
     for (const group of round.groups) {
       const naturalTopOfFirstCard = cascadeY + (group.recordLabel ? LABEL_HEIGHT : 0);

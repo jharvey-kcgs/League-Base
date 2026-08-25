@@ -943,6 +943,15 @@ const KNOWN_MATCH_CONNECTIONS: Record<string, string> = {
   '116769742220520943': '116769742220520949',
   // Lower Bracket Finals winner advances to Finals
   '116769742220520949': '116769742220520955',
+  // LCK Play-Ins (2026-08-25) — confirmed directly from the official
+  // page: both Round 1 winners (KT vs BRO; NONGSHIM RED FORCE vs BNK
+  // FEARX) advance to the single Round 2 match. Round 2's match is
+  // fully TBD-vs-TBD as of this entry (Round 1 hasn't been played
+  // yet) — no specific name confirmed for it, unlike LPL's "Finals" or
+  // LCP's named Playoffs stages, so it renders as generic "ROUND 2"
+  // rather than getting a KNOWN_ROUND_LABELS entry.
+  '117030752644841571': '117030752644841583', // KT vs HANJIN BRION -> Round 2
+  '117030752644841577': '117030752644841583', // NONGSHIM RED FORCE vs BNK FEARX -> Round 2
 };
 
 /** Same discipline as KNOWN_MATCH_CONNECTIONS above, but for the LOSER's
@@ -1021,13 +1030,21 @@ function fetchEliminationBracketData(stageName: string, stage: RawStage): Bracke
   // A stage where every match is still fully TBD-vs-TBD (Playoffs' four
   // downstream stages, before Round 1 resolves) has nothing real to show
   // yet — same "nothing to show" signal used everywhere else, rather
-  // than a bracket full of blank cards. A match with a confirmed entry
-  // in KNOWN_ROUND_LABELS is the one exception: its identity is known
-  // even while its actual teams aren't yet, matching what was directly
-  // confirmed from the official page for LCP Playoffs.
-  const hasAnyRealMatch = matches.some((m) => tbdCount(m) < 2 || KNOWN_ROUND_LABELS[m.id]);
+  // than a bracket full of blank cards. Two exceptions: a match with a
+  // confirmed entry in KNOWN_ROUND_LABELS (its identity is known even
+  // while its actual teams aren't — LCP Playoffs' named stages), or a
+  // match that's a confirmed destination of some other match's win or
+  // loss connection (its EXISTENCE and place in the bracket are known,
+  // even without a specific name — LCK Play-Ins' Round 2, which is
+  // fully TBD on both sides, unlike LCP's own Round 2 which had one
+  // side already seeded, and doesn't get a specific name, just the
+  // generic "ROUND 2" fallback).
+  const isConfirmedDestination = (id: string) =>
+    Object.values(KNOWN_MATCH_CONNECTIONS).includes(id) || Object.values(KNOWN_LOSER_CONNECTIONS).includes(id);
+  const isConfirmed = (m: RawStandingsMatch) => tbdCount(m) < 2 || !!KNOWN_ROUND_LABELS[m.id] || isConfirmedDestination(m.id);
+  const hasAnyRealMatch = matches.some(isConfirmed);
   if (!hasAnyRealMatch) return { stageName, rounds: [] };
-  const confirmedMatches = matches.filter((m) => tbdCount(m) < 2 || KNOWN_ROUND_LABELS[m.id]);
+  const confirmedMatches = matches.filter(isConfirmed);
 
   // Matches that are a confirmed feedsInto (win) or feedsIntoOnLoss TARGET
   // of some other match are NOT round 1, no matter how many TBD slots
