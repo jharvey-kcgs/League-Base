@@ -943,14 +943,18 @@ const KNOWN_MATCH_CONNECTIONS: Record<string, string> = {
   '116769742220520943': '116769742220520949',
   // Lower Bracket Finals winner advances to Finals
   '116769742220520949': '116769742220520955',
-  // LCK Play-Ins (2026-08-25) — confirmed directly from the official
-  // page: both Round 1 winners (KT vs BRO; NONGSHIM RED FORCE vs BNK
-  // FEARX) advance to the single Round 2 match. Round 2's match is
-  // fully TBD-vs-TBD as of this entry (Round 1 hasn't been played
-  // yet) — no specific name confirmed for it, unlike LPL's "Finals" or
-  // LCP's named Playoffs stages, so it renders as generic "ROUND 2"
-  // rather than getting a KNOWN_ROUND_LABELS entry.
-  '117030752644841571': '117030752644841583', // KT vs HANJIN BRION -> Round 2
+  // LCK Play-Ins (2026-08-25) — confirmed directly from the user: this
+  // is an asymmetric shape, not a simple "both winners advance"
+  // single-elimination. NONGSHIM RED FORCE vs BNK FEARX's WINNER
+  // advances to Round 2 (kept here, unchanged). KT vs HANJIN BRION is
+  // different — its WINNER advances directly to Playoffs (outside this
+  // stage's own bracket entirely, so no connection needed for it here);
+  // its LOSER is who actually feeds Round 2 instead (see
+  // KNOWN_LOSER_CONNECTIONS below, not here). Round 2's match is fully
+  // TBD-vs-TBD as of this entry (Round 1 hasn't been played yet) — no
+  // specific name confirmed for it, unlike LPL's "Finals" or LCP's
+  // named Playoffs stages, so it renders as generic "ROUND 2" rather
+  // than getting a KNOWN_ROUND_LABELS entry.
   '117030752644841577': '117030752644841583', // NONGSHIM RED FORCE vs BNK FEARX -> Round 2
 };
 
@@ -969,6 +973,14 @@ const KNOWN_LOSER_CONNECTIONS: Record<string, string> = {
   '116769742220520931': '116769742220520943', // Team Secret Whales vs GAM Esports -> Upper Bracket Semifinals
   // Upper Bracket Finals' loser drops to Lower Bracket Finals
   '116769742220520937': '116769742220520949',
+  // LCK Play-Ins — KT vs HANJIN BRION's LOSER (not winner) feeds Round
+  // 2, since the winner advances directly to Playoffs instead. This is
+  // exactly why the connector line from this match to Round 2 correctly
+  // disappears from the bracket visual: the rendering only ever draws
+  // WINNER-path lines (feedsInto), never loser-path ones — so a match
+  // whose relevant connection is a loss, not a win, naturally shows no
+  // outgoing line at all, with no rendering changes needed for that.
+  '117030752644841571': '117030752644841583',
 };
 
 /** Explicit, directly-confirmed stage name for a specific matchId — same

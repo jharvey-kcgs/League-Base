@@ -55,18 +55,30 @@ interface Position {
 function computePositions(rounds: BracketRound[]): Map<string, Position> {
   const positions = new Map<string, Position>();
 
-  // Reverse of each match's own feedsInto (WIN-path only, never
-  // feedsIntoOnLoss) — destination matchId -> every source matchId whose
-  // WINNER advances into it. A bracket's vertical "lane" follows the
-  // winner-progression path; a loss-path drop-in (Upper Bracket Finals'
-  // loser dropping to Lower Bracket Finals, for example) is a side input
-  // that shouldn't dictate where the receiving match sits — confirmed
-  // directly against the real official page layout.
-  const winSourcesByDestination = new Map<string, string[]>();
+  // Destination matchId -> every source matchId that should count
+  // toward ITS centering. A win-path source (feedsInto) always counts —
+  // a bracket's vertical "lane" follows the winner-progression path. A
+  // loss-path source counts too, but ONLY when it has no separate
+  // win-path destination of its own: a source with both (LCP's Upper
+  // Bracket Finals, which independently feeds Finals via its own win
+  // path) has its position already determined by that other
+  // relationship, and including it here as well would pull the
+  // receiving match toward it incorrectly — confirmed directly against
+  // the real official page layout. A source whose ONLY role in this
+  // bracket is its loss-path connection (LCK's KT vs BRO, whose winner
+  // advances to Playoffs entirely outside this bracket, leaving the
+  // loss-path feed to Round 2 as its one and only connection here)
+  // correctly counts, since nothing else claims its position instead.
+  const centeringSourcesByDestination = new Map<string, string[]>();
   for (const m of rounds.flatMap((r) => r.groups.flatMap((g) => g.matches))) {
-    if (!m.feedsInto) continue;
-    if (!winSourcesByDestination.has(m.feedsInto)) winSourcesByDestination.set(m.feedsInto, []);
-    winSourcesByDestination.get(m.feedsInto)!.push(m.matchId);
+    if (m.feedsInto) {
+      if (!centeringSourcesByDestination.has(m.feedsInto)) centeringSourcesByDestination.set(m.feedsInto, []);
+      centeringSourcesByDestination.get(m.feedsInto)!.push(m.matchId);
+    }
+    if (m.feedsIntoOnLoss && !m.feedsInto) {
+      if (!centeringSourcesByDestination.has(m.feedsIntoOnLoss)) centeringSourcesByDestination.set(m.feedsIntoOnLoss, []);
+      centeringSourcesByDestination.get(m.feedsIntoOnLoss)!.push(m.matchId);
+    }
   }
 
   rounds.forEach((round, roundIndex) => {
@@ -91,7 +103,7 @@ function computePositions(rounds: BracketRound[]): Map<string, Position> {
       // group with several matches (Swiss's own record-groups) has no
       // single position to center, and stays at its natural cascade spot.
       if (group.matches.length === 1) {
-        const sourceIds = winSourcesByDestination.get(group.matches[0].matchId);
+        const sourceIds = centeringSourcesByDestination.get(group.matches[0].matchId);
         if (sourceIds?.length) {
           const sourcePositions = sourceIds.map((id) => positions.get(id)).filter((p): p is Position => !!p);
           if (sourcePositions.length === sourceIds.length) {
