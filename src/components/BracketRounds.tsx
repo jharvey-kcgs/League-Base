@@ -171,9 +171,13 @@ export function BracketRounds({ region }: { region: Region }) {
 
   const allMatches = rounds.flatMap((r) => r.groups.flatMap((g) => g.matches));
   const connectors = allMatches
-    .filter((m) => m.feedsInto)
-    .map((m) => ({ from: positions.get(m.matchId), to: positions.get(m.feedsInto!) }))
-    .filter((c): c is { from: Position; to: Position } => !!c.from && !!c.to);
+    .filter((m) => m.feedsInto && !m.suppressConnectorLine)
+    .map((m) => ({
+      from: positions.get(m.matchId),
+      to: positions.get(m.feedsInto!),
+      targetOffset: m.connectorTargetOffset,
+    }))
+    .filter((c): c is { from: Position; to: Position; targetOffset: 'top' | 'bottom' | undefined } => !!c.from && !!c.to);
 
   // Absolutely-positioned children don't contribute to their parent's
   // auto-computed size the way normal flex children do — the container
@@ -238,7 +242,7 @@ export function BracketRounds({ region }: { region: Region }) {
             );
           })}
           {connectors.map((c, i) => (
-            <Connector key={i} from={c.from} to={c.to} color={colors.border} />
+            <Connector key={i} from={c.from} to={c.to} color={colors.border} targetOffset={c.targetOffset} />
           ))}
         </View>
       </ScrollView>
@@ -251,9 +255,26 @@ export function BracketRounds({ region }: { region: Region }) {
  * own bracket page uses. Built from three plain, absolutely-positioned
  * Views (a horizontal segment, a vertical segment, another horizontal
  * segment) rather than adding an SVG dependency for one simple line. */
-function Connector({ from, to, color }: { from: Position; to: Position; color: string }) {
+function Connector({
+  from,
+  to,
+  color,
+  targetOffset,
+}: {
+  from: Position;
+  to: Position;
+  color: string;
+  targetOffset?: 'top' | 'bottom';
+}) {
   const fromY = from.y + from.height / 2;
-  const toY = to.y + to.height / 2;
+  // A card's two team slots split its height roughly in half around the
+  // divider — 0.25 lands on the first (top) slot's own center, 0.75 on
+  // the second (bottom) slot's, rather than the card's overall center.
+  // See BracketMatch.connectorTargetOffset's own comment for why this
+  // is needed at all: it's not a general "line drawing" preference, but
+  // a specific, confirmed visual fact about which slot a given
+  // connection actually advances into on the real page.
+  const toY = to.y + to.height * (targetOffset === 'bottom' ? 0.75 : targetOffset === 'top' ? 0.25 : 0.5);
   const fromX = from.x + COLUMN_WIDTH;
   const toX = to.x;
   // Deliberately the midpoint of the GAP immediately before the

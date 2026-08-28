@@ -615,6 +615,34 @@ export interface BracketMatch {
    * unchanged for every place already relying on it. Same confirmation
    * discipline as feedsInto: see KNOWN_MATCH_CONNECTIONS below. */
   feedsIntoOnLoss?: string;
+  /** When true, feedsInto above is a real, confirmed connection (used
+   * for round placement and centering) but should NOT get a drawn
+   * connector line — a genuinely different thing from feedsIntoOnLoss
+   * (which also never draws a line, but because it's a loss-path
+   * relationship, not a win-path one being deliberately hidden). First
+   * needed for LCK's Regional Championship: Round 1's winners visibly
+   * advance into Upper Bracket Round 2, and that relationship is real
+   * and needed for correct positioning, but the official page draws no
+   * line for it at all — confirmed directly from the user's own
+   * detailed description, not an assumption about how win-path
+   * connections normally render. */
+  suppressConnectorLine?: boolean;
+  /** Where the connector line drawn FROM this match should land on its
+   * destination card — 'bottom' points at the destination's second team
+   * slot, 'top' at its first, rather than the card's vertical center
+   * (the default when this is undefined). First needed for LCK
+   * Regional Championship's Lower Bracket chain (Round 1 -> 2 -> 3 ->
+   * Finals): each destination in that chain has one slot "deposited"
+   * from an Upper Bracket loser (no line) and one slot that genuinely
+   * advances via this connecting line — the official page visually
+   * distinguishes them by landing the line on the specific slot that's
+   * actually advancing, not the card's center. Later extended to
+   * Upper Bracket Round 2 -> Upper Bracket Finals (the first UBR2
+   * match feeds the top slot, the second feeds the bottom) and Upper
+   * Bracket Finals / Lower Bracket Finals -> Finals (UBF feeds the top
+   * slot, LBF the bottom) — same real, confirmed pattern, not assumed
+   * to apply to every connector generally. */
+  connectorTargetOffset?: 'top' | 'bottom';
 }
 
 export interface BracketMatchGroup {
@@ -956,6 +984,32 @@ const KNOWN_MATCH_CONNECTIONS: Record<string, string> = {
   // named Playoffs stages, so it renders as generic "ROUND 2" rather
   // than getting a KNOWN_ROUND_LABELS entry.
   '117030752644841577': '117030752644841583', // NONGSHIM RED FORCE vs BNK FEARX -> Round 2
+  // LCK "Regional Championship" (Playoffs) — confirmed directly from the
+  // user's detailed description of the official page. Round 1's two
+  // real matches (T1 vs BFX, id ...841589; DK vs KT, id ...841595) and
+  // the two Upper Bracket Round 2 matches (GEN's, id ...841601; HLE's,
+  // id ...841607) are directly confirmed real matches. The remaining
+  // six IDs (...841613 through ...841643) are ALL still fully
+  // TBD-vs-TBD — same situation as LCP Playoffs' four indistinguishable
+  // placeholders before it: nothing in the raw data tells them apart,
+  // so their identity here is inferred from sequential ID order
+  // matching the user's own described reading order (Lower Bracket
+  // Round 1, then Round 2, then Round 3, then Upper Bracket Finals,
+  // then Lower Bracket Finals, then Finals) — worth confirming for
+  // real once Round 1 actually resolves and reveals which is which.
+  // Which specific Round 1 winner feeds which specific Upper Bracket
+  // Round 2 match (T1/BFX's winner -> GEN's match, DK/KT's winner ->
+  // HLE's match) is the same kind of positional inference, not
+  // independently confirmed either.
+  '117030752644841589': '117030752644841601', // T1 vs BFX winner -> Upper Bracket Round 2 (GEN's match)
+  '117030752644841595': '117030752644841607', // DK vs KT winner -> Upper Bracket Round 2 (HLE's match)
+  '117030752644841601': '117030752644841631', // Upper Bracket Round 2 (GEN's match) winner -> Upper Bracket Finals
+  '117030752644841607': '117030752644841631', // Upper Bracket Round 2 (HLE's match) winner -> Upper Bracket Finals
+  '117030752644841613': '117030752644841619', // Lower Bracket Round 1 winner -> Lower Bracket Round 2
+  '117030752644841619': '117030752644841625', // Lower Bracket Round 2 winner -> Lower Bracket Round 3
+  '117030752644841625': '117030752644841637', // Lower Bracket Round 3 winner -> Lower Bracket Finals
+  '117030752644841631': '117030752644841643', // Upper Bracket Finals winner -> Finals
+  '117030752644841637': '117030752644841643', // Lower Bracket Finals winner -> Finals
 };
 
 /** Same discipline as KNOWN_MATCH_CONNECTIONS above, but for the LOSER's
@@ -981,6 +1035,21 @@ const KNOWN_LOSER_CONNECTIONS: Record<string, string> = {
   // whose relevant connection is a loss, not a win, naturally shows no
   // outgoing line at all, with no rendering changes needed for that.
   '117030752644841571': '117030752644841583',
+  // LCK Regional Championship — Round 1 losers both drop to Lower
+  // Bracket Round 1 (confirmed: they face each other there). Upper
+  // Bracket Round 2's two losers are explicitly "deposited, no
+  // connecting line" per the user — GEN's match loser to Lower Bracket
+  // Round 2, HLE's match loser to Lower Bracket Round 3 (inferred by
+  // the same positional pattern as the win-path connections above, not
+  // independently confirmed). Upper Bracket Finals' loser is also
+  // explicitly "deposited, no line" into Lower Bracket Finals. All of
+  // these correctly render with no connector line by construction —
+  // the rendering only ever draws win-path lines, never loss-path ones.
+  '117030752644841589': '117030752644841613', // T1 vs BFX loser -> Lower Bracket Round 1
+  '117030752644841595': '117030752644841613', // DK vs KT loser -> Lower Bracket Round 1
+  '117030752644841601': '117030752644841619', // Upper Bracket Round 2 (GEN's match) loser -> Lower Bracket Round 2
+  '117030752644841607': '117030752644841625', // Upper Bracket Round 2 (HLE's match) loser -> Lower Bracket Round 3
+  '117030752644841631': '117030752644841637', // Upper Bracket Finals loser -> Lower Bracket Finals
 };
 
 /** Explicit, directly-confirmed stage name for a specific matchId — same
@@ -1019,6 +1088,77 @@ const KNOWN_ROUND_LABELS: Record<string, string> = {
   // label here even while both are still fully TBD-vs-TBD.
   '116566921179138936': 'Finals',
   '116566921179204478': 'Finals',
+  // LCK Regional Championship — Round 1 (T1 vs BFX, DK vs KT) gets no
+  // entry here at all, deliberately: it's genuinely just "Round 1,"
+  // which is exactly what the generic ROUND N fallback already
+  // produces — no confirmed label needed to override a fallback that's
+  // already correct. Every other stage here IS a real, distinctly-named
+  // one, needed specifically because Upper Bracket Round 2 and Lower
+  // Bracket Round 1 land in the same computed column and would
+  // otherwise be indistinguishable, same reason LCP Playoffs needed
+  // per-stage labels rather than one per round.
+  '117030752644841601': 'Upper Bracket Round 2',
+  '117030752644841607': 'Upper Bracket Round 2',
+  '117030752644841613': 'Lower Bracket Round 1',
+  '117030752644841619': 'Lower Bracket Round 2',
+  '117030752644841625': 'Lower Bracket Round 3',
+  '117030752644841631': 'Upper Bracket Finals',
+  '117030752644841637': 'Lower Bracket Finals',
+  '117030752644841643': 'Finals',
+};
+
+/** Explicit column-number override for a specific matchId — used only
+ * when a bracket's real, official layout deliberately positions a match
+ * LATER than its earliest-possible computed column would place it. LCK
+ * Regional Championship's Upper Bracket Finals is the first real case
+ * of this: fed only by Upper Bracket Round 2 (which shares a column
+ * with Lower Bracket Round 1), the normal "1 + max(source columns)"
+ * computation would place it in column 3 — but the official page
+ * deliberately holds it back to column 5, letting the Lower Bracket
+ * visually "catch up" first, the same convention real double-
+ * elimination brackets commonly use. Confirmed directly from the
+ * user's own detailed column-by-column description of the official
+ * page.
+ *
+ * Applied by pre-seeding this value into the round-assignment map
+ * before the normal fixed-point computation runs — everything
+ * downstream (Lower Bracket Finals, Finals) still computes correctly
+ * from this single override with no separate override needed for them,
+ * verified directly: overriding only Upper Bracket Finals to column 5
+ * naturally propagates Lower Bracket Finals to 6 and Finals to 7,
+ * exactly matching the user's described layout. */
+const KNOWN_COLUMN_OVERRIDES: Record<string, number> = {
+  '117030752644841631': 5, // LCK Regional Championship — Upper Bracket Finals
+};
+
+/** Set of matchIds whose feedsInto connection is real and confirmed
+ * (needed for round placement and centering) but whose connector line
+ * should NOT be drawn — see BracketMatch.suppressConnectorLine's own
+ * comment for why this is a genuinely different thing from a loss-path
+ * connection. LCK Regional Championship's Round 1 is the only case of
+ * this so far: both matches' winners advance to Upper Bracket Round 2,
+ * confirmed real, but the official page draws no line for either. */
+const SUPPRESSED_CONNECTOR_LINES = new Set<string>([
+  '117030752644841589', // T1 vs BFX
+  '117030752644841595', // DK vs KT
+]);
+
+/** Source matchIds whose connector line should land on the destination's
+ * bottom team slot specifically, not the card's center — see
+ * BracketMatch.connectorTargetOffset's own comment for why. LCK
+ * Regional Championship's Lower Bracket chain: each of these three
+ * destinations (Lower Bracket Round 2, Round 3, Finals) has one team
+ * slot deposited from an Upper Bracket loser and one that genuinely
+ * advances via this specific line — the official page lands the line
+ * on the advancing slot, confirmed directly from the user's comparison. */
+const CONNECTOR_TARGET_OFFSETS: Record<string, 'top' | 'bottom'> = {
+  '117030752644841613': 'bottom', // Lower Bracket Round 1 -> Round 2
+  '117030752644841619': 'bottom', // Lower Bracket Round 2 -> Round 3
+  '117030752644841625': 'bottom', // Lower Bracket Round 3 -> Finals
+  '117030752644841601': 'top', // Upper Bracket Round 2 (GEN's match) -> Upper Bracket Finals, top slot
+  '117030752644841607': 'bottom', // Upper Bracket Round 2 (HLE's match) -> Upper Bracket Finals, bottom slot
+  '117030752644841631': 'top', // Upper Bracket Finals -> Finals, top slot
+  '117030752644841637': 'bottom', // Lower Bracket Finals -> Finals, bottom slot
 };
 
 function fetchEliminationBracketData(stageName: string, stage: RawStage): BracketData {
@@ -1083,6 +1223,19 @@ function fetchEliminationBracketData(stageName: string, stage: RawStage): Bracke
     for (const m of byTbdCount.get(count)!) roundNumberByMatchId.set(m.id, i + 1);
   });
 
+  // Explicit column overrides applied before the fixed-point loop below
+  // ever runs — the loop's own "skip if already set" check means a
+  // pre-seeded value here is simply left alone, and any match that
+  // depends on this one downstream correctly reads the overridden
+  // value as its source round, letting the rest of a chain (Lower
+  // Bracket Finals, Finals, for LCK's Upper Bracket Finals override)
+  // propagate correctly with no separate override needed for each.
+  for (const match of confirmedMatches) {
+    if (KNOWN_COLUMN_OVERRIDES[match.id] !== undefined) {
+      roundNumberByMatchId.set(match.id, KNOWN_COLUMN_OVERRIDES[match.id]);
+    }
+  }
+
   // Matches WITH a confirmed predecessor land one round after whichever
   // of their sources resolves latest — a real 2-into-1 merge (Round 1's
   // two winners both feeding the same Upper Bracket Finals match here)
@@ -1133,6 +1286,8 @@ function fetchEliminationBracketData(stageName: string, stage: RawStage): Bracke
       scoreB: teamB?.result?.gameWins ?? 0,
       feedsInto: KNOWN_MATCH_CONNECTIONS[match.id],
       feedsIntoOnLoss: KNOWN_LOSER_CONNECTIONS[match.id],
+      suppressConnectorLine: SUPPRESSED_CONNECTOR_LINES.has(match.id) || undefined,
+      connectorTargetOffset: CONNECTOR_TARGET_OFFSETS[match.id],
     });
   }
 
