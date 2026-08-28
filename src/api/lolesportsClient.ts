@@ -1010,6 +1010,35 @@ const KNOWN_MATCH_CONNECTIONS: Record<string, string> = {
   '117030752644841625': '117030752644841637', // Lower Bracket Round 3 winner -> Lower Bracket Finals
   '117030752644841631': '117030752644841643', // Upper Bracket Finals winner -> Finals
   '117030752644841637': '117030752644841643', // Lower Bracket Finals winner -> Finals
+  // LPL Playoffs (2026) — confirmed directly from the user's detailed
+  // column-by-column breakdown. The first six IDs are directly
+  // confirmed real matches (Upper Bracket Quarterfinals: TES vs LGD,
+  // JDG vs WE; Upper Bracket Semifinals: AL's and BLG's matches, each
+  // partially seeded; Lower Bracket Round 1: NIP's and IG's matches,
+  // also partially seeded). The remaining six IDs (...202172 through
+  // ...202202) are ALL still fully TBD-vs-TBD, same situation as every
+  // other bracket before it — their identity here is inferred from
+  // sequential ID order matching the user's own described reading
+  // order (Upper Bracket Finals, then the two Lower Bracket
+  // Quarterfinals matches, then Lower Bracket Semifinals, then Lower
+  // Bracket Finals, then Finals), worth confirming once real results
+  // reveal which is which. Which specific Lower Bracket Quarterfinals
+  // match pairs with which Upper Bracket Semifinals loser and Lower
+  // Bracket Round 1 winner is inferred by keeping each bracket "lane"
+  // consistent (everything tracing back to TES vs LGD stays paired
+  // together, same for JDG vs WE) — a reasonable, but not
+  // independently confirmed, assumption.
+  '117155436343202136': '117155436343202148', // TES vs LGD winner -> Upper Bracket Semifinals (AL's match)
+  '117155436343202142': '117155436343202154', // JDG vs WE winner -> Upper Bracket Semifinals (BLG's match)
+  '117155436343202148': '117155436343202172', // Upper Bracket Semifinals (AL's match) winner -> Upper Bracket Finals
+  '117155436343202154': '117155436343202172', // Upper Bracket Semifinals (BLG's match) winner -> Upper Bracket Finals
+  '117155436343202160': '117155436343202178', // Lower Bracket Round 1 (NIP's match) winner -> Lower Bracket Quarterfinals A
+  '117155436343202166': '117155436343202184', // Lower Bracket Round 1 (IG's match) winner -> Lower Bracket Quarterfinals B
+  '117155436343202178': '117155436343202190', // Lower Bracket Quarterfinals A winner -> Lower Bracket Semifinals
+  '117155436343202184': '117155436343202190', // Lower Bracket Quarterfinals B winner -> Lower Bracket Semifinals
+  '117155436343202172': '117155436343202202', // Upper Bracket Finals winner -> Finals
+  '117155436343202190': '117155436343202196', // Lower Bracket Semifinals winner -> Lower Bracket Finals
+  '117155436343202196': '117155436343202202', // Lower Bracket Finals winner -> Finals
 };
 
 /** Same discipline as KNOWN_MATCH_CONNECTIONS above, but for the LOSER's
@@ -1050,6 +1079,15 @@ const KNOWN_LOSER_CONNECTIONS: Record<string, string> = {
   '117030752644841601': '117030752644841619', // Upper Bracket Round 2 (GEN's match) loser -> Lower Bracket Round 2
   '117030752644841607': '117030752644841625', // Upper Bracket Round 2 (HLE's match) loser -> Lower Bracket Round 3
   '117030752644841631': '117030752644841637', // Upper Bracket Finals loser -> Lower Bracket Finals
+  // LPL Playoffs — every one of these is explicitly "deposited, no
+  // connecting line" per the user's own description, which the loss-
+  // path table naturally provides since connector lines are never
+  // drawn for it.
+  '117155436343202136': '117155436343202160', // TES vs LGD loser -> Lower Bracket Round 1 (NIP's match)
+  '117155436343202142': '117155436343202166', // JDG vs WE loser -> Lower Bracket Round 1 (IG's match)
+  '117155436343202148': '117155436343202178', // Upper Bracket Semifinals (AL's match) loser -> Lower Bracket Quarterfinals A
+  '117155436343202154': '117155436343202184', // Upper Bracket Semifinals (BLG's match) loser -> Lower Bracket Quarterfinals B
+  '117155436343202172': '117155436343202196', // Upper Bracket Finals loser -> Lower Bracket Finals
 };
 
 /** Explicit, directly-confirmed stage name for a specific matchId — same
@@ -1105,6 +1143,20 @@ const KNOWN_ROUND_LABELS: Record<string, string> = {
   '117030752644841631': 'Upper Bracket Finals',
   '117030752644841637': 'Lower Bracket Finals',
   '117030752644841643': 'Finals',
+  // LPL Playoffs — confirmed directly from the user's own column
+  // breakdown, all real, distinctly-named stages.
+  '117155436343202136': 'Upper Bracket Quarterfinals',
+  '117155436343202142': 'Upper Bracket Quarterfinals',
+  '117155436343202148': 'Upper Bracket Semifinals',
+  '117155436343202154': 'Upper Bracket Semifinals',
+  '117155436343202160': 'Lower Bracket Round 1',
+  '117155436343202166': 'Lower Bracket Round 1',
+  '117155436343202172': 'Upper Bracket Finals',
+  '117155436343202178': 'Lower Bracket Quarterfinals',
+  '117155436343202184': 'Lower Bracket Quarterfinals',
+  '117155436343202190': 'Lower Bracket Semifinals',
+  '117155436343202196': 'Lower Bracket Finals',
+  '117155436343202202': 'Finals',
 };
 
 /** Explicit column-number override for a specific matchId — used only
@@ -1151,6 +1203,31 @@ const SUPPRESSED_CONNECTOR_LINES = new Set<string>([
  * slot deposited from an Upper Bracket loser and one that genuinely
  * advances via this specific line — the official page lands the line
  * on the advancing slot, confirmed directly from the user's comparison. */
+/** Set of matchIds whose raw team array order is swapped relative to
+ * the official page's actual visual top/bottom order — team[1] should
+ * render first/top, team[0] second/bottom. Confirmed directly: LPL
+ * Playoffs' Upper Bracket Semifinals matches (AL's, BLG's) and Lower
+ * Bracket Round 1 matches (NIP's, IG's) all list the real, known team
+ * as team[1] in the raw data, but lolesports.com shows that known team
+ * on TOP, not the bottom. For AL/BLG specifically, this was also why
+ * their incoming connector line looked wrong — it was correctly
+ * targeting the "bottom" slot (the actual empty TBD one), but AL/BLG
+ * were incorrectly occupying that slot instead of top, making the line
+ * look like it fed into an already-placed team. NIP/IG's own incoming
+ * connection (from their respective Upper Bracket Quarterfinals loser)
+ * is loss-path and never draws a line regardless, so their swap is a
+ * pure display-order fix with no connector implication. Given four of
+ * four partially-seeded LPL Playoffs matches checked so far all needed
+ * this same swap, it's worth checking every remaining partially-seeded
+ * match in this bracket too, rather than assuming any one is fine by
+ * default — not confirmed to be a general pattern beyond this bracket. */
+const KNOWN_TEAM_ORDER_SWAPS = new Set<string>([
+  '117155436343202148', // LPL Playoffs — Upper Bracket Semifinals (AL's match)
+  '117155436343202154', // LPL Playoffs — Upper Bracket Semifinals (BLG's match)
+  '117155436343202160', // LPL Playoffs — Lower Bracket Round 1 (NIP's match)
+  '117155436343202166', // LPL Playoffs — Lower Bracket Round 1 (IG's match)
+]);
+
 const CONNECTOR_TARGET_OFFSETS: Record<string, 'top' | 'bottom'> = {
   '117030752644841613': 'bottom', // Lower Bracket Round 1 -> Round 2
   '117030752644841619': 'bottom', // Lower Bracket Round 2 -> Round 3
@@ -1159,6 +1236,23 @@ const CONNECTOR_TARGET_OFFSETS: Record<string, 'top' | 'bottom'> = {
   '117030752644841607': 'bottom', // Upper Bracket Round 2 (HLE's match) -> Upper Bracket Finals, bottom slot
   '117030752644841631': 'top', // Upper Bracket Finals -> Finals, top slot
   '117030752644841637': 'bottom', // Lower Bracket Finals -> Finals, bottom slot
+  // LPL Playoffs — confirmed directly from the user's explicit
+  // per-connection top/bottom breakdown. Which specific UBQF match
+  // targets top vs bottom of UBF, and which specific LBQF match
+  // targets top vs bottom of LBSF, is inferred by the same positional
+  // ordering as the connection tables above, not independently
+  // confirmed beyond "one goes top, one goes bottom."
+  '117155436343202136': 'bottom', // TES vs LGD -> Upper Bracket Semifinals, bottom slot
+  '117155436343202142': 'bottom', // JDG vs WE -> Upper Bracket Semifinals, bottom slot
+  '117155436343202148': 'top', // Upper Bracket Semifinals (AL's match) -> Upper Bracket Finals, top slot
+  '117155436343202154': 'bottom', // Upper Bracket Semifinals (BLG's match) -> Upper Bracket Finals, bottom slot
+  '117155436343202160': 'top', // Lower Bracket Round 1 (NIP's match) -> Lower Bracket Quarterfinals A, top slot
+  '117155436343202166': 'top', // Lower Bracket Round 1 (IG's match) -> Lower Bracket Quarterfinals B, top slot
+  '117155436343202172': 'top', // Upper Bracket Finals -> Finals, top slot
+  '117155436343202178': 'top', // Lower Bracket Quarterfinals A -> Lower Bracket Semifinals, top slot
+  '117155436343202184': 'bottom', // Lower Bracket Quarterfinals B -> Lower Bracket Semifinals, bottom slot
+  '117155436343202190': 'bottom', // Lower Bracket Semifinals -> Lower Bracket Finals, bottom slot
+  '117155436343202196': 'bottom', // Lower Bracket Finals -> Finals, bottom slot
 };
 
 function fetchEliminationBracketData(stageName: string, stage: RawStage): BracketData {
@@ -1274,7 +1368,16 @@ function fetchEliminationBracketData(stageName: string, stage: RawStage): Bracke
 
   const byRound = new Map<number, BracketMatch[]>();
   for (const match of confirmedMatches) {
-    const [teamA, teamB] = match.teams;
+    // The raw team array's own order doesn't always match the official
+    // page's actual visual top/bottom order — confirmed directly: AL's
+    // and BLG's Upper Bracket Semifinals matches show them as the TOP
+    // team on lolesports.com, but the raw data lists them as team[1]
+    // (which this code renders second/bottom by default). Swapping just
+    // for the specific matches where this was actually confirmed wrong,
+    // not assumed to be a general pattern — most matches elsewhere in
+    // this whole project have rendered correctly without any swap.
+    const swap = KNOWN_TEAM_ORDER_SWAPS.has(match.id);
+    const [teamA, teamB] = swap ? [match.teams[1], match.teams[0]] : match.teams;
     const roundNumber = roundNumberByMatchId.get(match.id)!;
     if (!byRound.has(roundNumber)) byRound.set(roundNumber, []);
     byRound.get(roundNumber)!.push({
