@@ -993,23 +993,53 @@ const KNOWN_MATCH_CONNECTIONS: Record<string, string> = {
   // TBD-vs-TBD — same situation as LCP Playoffs' four indistinguishable
   // placeholders before it: nothing in the raw data tells them apart,
   // so their identity here is inferred from sequential ID order
-  // matching the user's own described reading order (Lower Bracket
-  // Round 1, then Round 2, then Round 3, then Upper Bracket Finals,
-  // then Lower Bracket Finals, then Finals) — worth confirming for
-  // real once Round 1 actually resolves and reveals which is which.
-  // Which specific Round 1 winner feeds which specific Upper Bracket
-  // Round 2 match (T1/BFX's winner -> GEN's match, DK/KT's winner ->
-  // HLE's match) is the same kind of positional inference, not
-  // independently confirmed either.
-  '117030752644841589': '117030752644841601', // T1 vs BFX winner -> Upper Bracket Round 2 (GEN's match)
-  '117030752644841595': '117030752644841607', // DK vs KT winner -> Upper Bracket Round 2 (HLE's match)
-  '117030752644841601': '117030752644841631', // Upper Bracket Round 2 (GEN's match) winner -> Upper Bracket Finals
-  '117030752644841607': '117030752644841631', // Upper Bracket Round 2 (HLE's match) winner -> Upper Bracket Finals
-  '117030752644841613': '117030752644841619', // Lower Bracket Round 1 winner -> Lower Bracket Round 2
-  '117030752644841619': '117030752644841625', // Lower Bracket Round 2 winner -> Lower Bracket Round 3
-  '117030752644841625': '117030752644841637', // Lower Bracket Round 3 winner -> Lower Bracket Finals
-  '117030752644841631': '117030752644841643', // Upper Bracket Finals winner -> Finals
+  // matching the user's own described reading order.
+  //
+  // 2026-08-27 correction, confirmed directly from real results: GEN
+  // beat KT in what's actually the match paired with DK/KT's winner —
+  // meaning the Round 1 -> Upper Bracket Round 2 pairing was backwards
+  // (DK/KT's winner feeds GEN's match, T1/BFX's winner feeds HLE's
+  // match, not the reverse as originally inferred). More importantly,
+  // match ...841619 is confirmed to actually BE Upper Bracket Finals
+  // (GEN, the winner, correctly appears there) — not Lower Bracket
+  // Round 2 as originally guessed, and its real sources are ...841601
+  // and ...841607 (both confirmed), not ...841613 as originally
+  // guessed. The rest of the original chain (Lower Bracket Round 2 ->
+  // 3 -> Finals via ...841625/631/637/643) is restored below exactly
+  // as before — the one specific thing directly disproven here is
+  // which match ...841619 actually is and what feeds it, not the
+  // identity of 625/631/637/643 themselves, which remain unconfirmed
+  // inferences either way.
+  '117030752644841595': '117030752644841601', // KT vs DK winner -> Upper Bracket Round 2 (GEN's match)
+  '117030752644841589': '117030752644841607', // T1 vs BFX winner -> Upper Bracket Round 2 (HLE's match)
+  '117030752644841601': '117030752644841619', // Upper Bracket Round 2 (GEN's match) winner -> Upper Bracket Finals (confirmed)
+  '117030752644841607': '117030752644841619', // Upper Bracket Round 2 (HLE's match) winner -> Upper Bracket Finals (confirmed)
+  //
+  // 2026-08-28 correction: the user directly confirmed via browser
+  // devtools that ...841625 = Lower Bracket Round 2, ...841631 = Lower
+  // Bracket Round 3, ...841637 = Lower Bracket Finals, ...841643 =
+  // Finals. This is a real structural correction, not just a relabel —
+  // the previous guess had 625 as "Lower Bracket Round 3" feeding 637
+  // directly, which is now known wrong: the real chain is
+  // 613 -> 625 -> 631 -> 637 -> 643, one stage at a time. Also newly
+  // added: ...841619 (confirmed Upper Bracket Finals) -> 643 (Finals)
+  // — a structural certainty of any double-elimination bracket (the
+  // winner's bracket champion always reaches the overall Finals), not
+  // an inference, now that 643 is confirmed to actually be Finals.
+  '117030752644841613': '117030752644841625', // Lower Bracket Round 1 winner -> Lower Bracket Round 2 (confirmed lower slot)
+  '117030752644841625': '117030752644841631', // Lower Bracket Round 2 winner -> Lower Bracket Round 3 (confirmed lower slot)
+  '117030752644841631': '117030752644841637', // Lower Bracket Round 3 winner -> Lower Bracket Finals
   '117030752644841637': '117030752644841643', // Lower Bracket Finals winner -> Finals
+  '117030752644841619': '117030752644841643', // Upper Bracket Finals winner -> Finals (newly added, structurally certain)
+  // NOTE: the original '117030752644841613': '117030752644841619'
+  // entry (Lower Bracket Round 1 winner -> what was guessed as Lower
+  // Bracket Round 2) is NOT restored — it's directly, provably
+  // contradicted now that ...841619 is confirmed to be Upper Bracket
+  // Finals with confirmed sources ...841601/...841607, not ...841613.
+  // Restoring it would show Lower Bracket Round 1's winner feeding
+  // Upper Bracket Finals, which is known to be false. ...841613's own
+  // winner still needs a real destination once one is confirmed — it
+  // has none for now rather than a guessed, unconfirmed one.
   // LPL Playoffs (2026) — confirmed directly from the user's detailed
   // column-by-column breakdown. The first six IDs are directly
   // confirmed real matches (Upper Bracket Quarterfinals: TES vs LGD,
@@ -1039,6 +1069,17 @@ const KNOWN_MATCH_CONNECTIONS: Record<string, string> = {
   '117155436343202172': '117155436343202202', // Upper Bracket Finals winner -> Finals
   '117155436343202190': '117155436343202196', // Lower Bracket Semifinals winner -> Lower Bracket Finals
   '117155436343202196': '117155436343202202', // Lower Bracket Finals winner -> Finals
+  // LEC Playoffs (2026) — confirmed directly and completely from the
+  // user's own detailed breakdown, including the exact match ID for
+  // every single stage (no sequential-order inference needed this
+  // time, unlike every bracket before it).
+  '115548681803406291': '115548681803406303', // KC vs GX winner -> Upper Bracket Round 2, top slot
+  '115548681803406297': '115548681803406303', // VIT vs G2 winner -> Upper Bracket Round 2, bottom slot
+  '115548681803406309': '115548681803406321', // Lower Bracket Round 1 (NAVI's match) winner -> Lower Bracket Round 2, top slot
+  '115548681803406315': '115548681803406321', // Lower Bracket Round 1 (MKOI's match) winner -> Lower Bracket Round 2, bottom slot
+  '115548681803406303': '115548681803406333', // Upper Bracket Round 2 winner -> Finals, top slot
+  '115548681803406321': '115548681803406327', // Lower Bracket Round 2 winner -> Lower Bracket Round 3, bottom slot
+  '115548681803406327': '115548681803406333', // Lower Bracket Round 3 winner -> Finals, bottom slot
 };
 
 /** Same discipline as KNOWN_MATCH_CONNECTIONS above, but for the LOSER's
@@ -1065,20 +1106,26 @@ const KNOWN_LOSER_CONNECTIONS: Record<string, string> = {
   // outgoing line at all, with no rendering changes needed for that.
   '117030752644841571': '117030752644841583',
   // LCK Regional Championship — Round 1 losers both drop to Lower
-  // Bracket Round 1 (confirmed: they face each other there). Upper
-  // Bracket Round 2's two losers are explicitly "deposited, no
-  // connecting line" per the user — GEN's match loser to Lower Bracket
-  // Round 2, HLE's match loser to Lower Bracket Round 3 (inferred by
-  // the same positional pattern as the win-path connections above, not
-  // independently confirmed). Upper Bracket Finals' loser is also
-  // explicitly "deposited, no line" into Lower Bracket Finals. All of
-  // these correctly render with no connector line by construction —
-  // the rendering only ever draws win-path lines, never loss-path ones.
+  // Bracket Round 1 (confirmed: they face each other there).
+  //
+  // 2026-08-27/28: match ...841619 is confirmed to be Upper Bracket
+  // Finals with confirmed sources ...841601/...841607 (both via
+  // WIN-path, GEN's win is what's actually sitting there) — meaning the
+  // original '...841601': '...841619' LOSER connection is directly,
+  // provably wrong: 619 is where the WINNER (GEN) goes, not the loser
+  // (KT). Separately, ...841625 and ...841631 are now confirmed to be
+  // Lower Bracket Round 2 and Round 3 respectively (not Upper Bracket
+  // Finals-adjacent as previously guessed) — an Upper Bracket Round 2
+  // loser's real destination between these two still depends on
+  // comparing seeds between both UBR2 losers, genuinely undeterminable
+  // until both matches complete, so neither ...841601's nor
+  // ...841607's loser gets a connection here yet. What IS now added,
+  // structurally certain rather than inferred: Upper Bracket Finals'
+  // own loser deposits into Lower Bracket Finals, per the rule
+  // confirmed several turns ago for this exact bracket.
+  '117030752644841619': '117030752644841637', // Upper Bracket Finals loser -> Lower Bracket Finals
   '117030752644841589': '117030752644841613', // T1 vs BFX loser -> Lower Bracket Round 1
   '117030752644841595': '117030752644841613', // DK vs KT loser -> Lower Bracket Round 1
-  '117030752644841601': '117030752644841619', // Upper Bracket Round 2 (GEN's match) loser -> Lower Bracket Round 2
-  '117030752644841607': '117030752644841625', // Upper Bracket Round 2 (HLE's match) loser -> Lower Bracket Round 3
-  '117030752644841631': '117030752644841637', // Upper Bracket Finals loser -> Lower Bracket Finals
   // LPL Playoffs — every one of these is explicitly "deposited, no
   // connecting line" per the user's own description, which the loss-
   // path table naturally provides since connector lines are never
@@ -1088,6 +1135,16 @@ const KNOWN_LOSER_CONNECTIONS: Record<string, string> = {
   '117155436343202148': '117155436343202178', // Upper Bracket Semifinals (AL's match) loser -> Lower Bracket Quarterfinals A
   '117155436343202154': '117155436343202184', // Upper Bracket Semifinals (BLG's match) loser -> Lower Bracket Quarterfinals B
   '117155436343202172': '117155436343202196', // Upper Bracket Finals loser -> Lower Bracket Finals
+  // LEC Playoffs — confirmed directly, same as the win-path table.
+  // UBR1's two losers both drop to Lower Bracket Round 1, keeping each
+  // match's own "lane" consistent (KC/GX's loser to NAVI's match,
+  // VIT/G2's loser to MKOI's match). Upper Bracket Round 2's loser
+  // deposits into Lower Bracket Round 3's top slot — explicitly "no
+  // connecting line" per the user, which the loss-path table naturally
+  // provides.
+  '115548681803406291': '115548681803406309', // KC vs GX loser -> Lower Bracket Round 1 (NAVI's match)
+  '115548681803406297': '115548681803406315', // VIT vs G2 loser -> Lower Bracket Round 1 (MKOI's match)
+  '115548681803406303': '115548681803406327', // Upper Bracket Round 2 loser -> Lower Bracket Round 3, top slot
 };
 
 /** Explicit, directly-confirmed stage name for a specific matchId — same
@@ -1138,11 +1195,17 @@ const KNOWN_ROUND_LABELS: Record<string, string> = {
   '117030752644841601': 'Upper Bracket Round 2',
   '117030752644841607': 'Upper Bracket Round 2',
   '117030752644841613': 'Lower Bracket Round 1',
-  '117030752644841619': 'Lower Bracket Round 2',
-  '117030752644841625': 'Lower Bracket Round 3',
-  '117030752644841631': 'Upper Bracket Finals',
+  '117030752644841619': 'Upper Bracket Finals', // confirmed 2026-08-27, see KNOWN_MATCH_CONNECTIONS' own comment
+  '117030752644841625': 'Lower Bracket Round 2',
+  '117030752644841631': 'Lower Bracket Round 3',
   '117030752644841637': 'Lower Bracket Finals',
   '117030752644841643': 'Finals',
+  // NOTE: ...841631's original label here was also "Upper Bracket
+  // Finals" — not restored, since that name now belongs to ...841619,
+  // confirmed directly (GEN's win is sitting there). Two matches both
+  // labeled "Upper Bracket Finals" would be a real, visible
+  // contradiction, not just an unconfirmed gap — this is the one label
+  // genuinely left out rather than restored as-is.
   // LPL Playoffs — confirmed directly from the user's own column
   // breakdown, all real, distinctly-named stages.
   '117155436343202136': 'Upper Bracket Quarterfinals',
@@ -1157,6 +1220,16 @@ const KNOWN_ROUND_LABELS: Record<string, string> = {
   '117155436343202190': 'Lower Bracket Semifinals',
   '117155436343202196': 'Lower Bracket Finals',
   '117155436343202202': 'Finals',
+  // LEC Playoffs — confirmed directly from the user's own column
+  // breakdown, all real, distinctly-named stages.
+  '115548681803406291': 'Upper Bracket Round 1',
+  '115548681803406297': 'Upper Bracket Round 1',
+  '115548681803406303': 'Upper Bracket Round 2',
+  '115548681803406309': 'Lower Bracket Round 1',
+  '115548681803406315': 'Lower Bracket Round 1',
+  '115548681803406321': 'Lower Bracket Round 2',
+  '115548681803406327': 'Lower Bracket Round 3',
+  '115548681803406333': 'Finals',
 };
 
 /** Explicit column-number override for a specific matchId — used only
@@ -1180,7 +1253,7 @@ const KNOWN_ROUND_LABELS: Record<string, string> = {
  * naturally propagates Lower Bracket Finals to 6 and Finals to 7,
  * exactly matching the user's described layout. */
 const KNOWN_COLUMN_OVERRIDES: Record<string, number> = {
-  '117030752644841631': 5, // LCK Regional Championship — Upper Bracket Finals
+  '117030752644841619': 5, // LCK Regional Championship — Upper Bracket Finals (moved here 2026-08-27 from the originally-guessed ...841631, once ...841619 was confirmed to be the real Upper Bracket Finals)
 };
 
 /** Set of matchIds whose feedsInto connection is real and confirmed
@@ -1226,15 +1299,22 @@ const KNOWN_TEAM_ORDER_SWAPS = new Set<string>([
   '117155436343202154', // LPL Playoffs — Upper Bracket Semifinals (BLG's match)
   '117155436343202160', // LPL Playoffs — Lower Bracket Round 1 (NIP's match)
   '117155436343202166', // LPL Playoffs — Lower Bracket Round 1 (IG's match)
+  '117030752644841619', // LCK Regional Championship — Upper Bracket Finals: GEN (from the first/top UBR2 match) should display first, but raw data lists it as team[1]. Consistent with the existing connectorTargetOffset for match 601 ('top'), which already assumed this
 ]);
 
 const CONNECTOR_TARGET_OFFSETS: Record<string, 'top' | 'bottom'> = {
-  '117030752644841613': 'bottom', // Lower Bracket Round 1 -> Round 2
-  '117030752644841619': 'bottom', // Lower Bracket Round 2 -> Round 3
-  '117030752644841625': 'bottom', // Lower Bracket Round 3 -> Finals
+  // 613's and 619's original entries here are not restored — each was
+  // for a connection that isn't being restored either (see
+  // KNOWN_MATCH_CONNECTIONS' own comment: both were directly
+  // contradicted by ...841619's confirmed identity). 601, 607, 625,
+  // and 631's entries are all restored, since their underlying
+  // connections are restored too.
   '117030752644841601': 'top', // Upper Bracket Round 2 (GEN's match) -> Upper Bracket Finals, top slot
   '117030752644841607': 'bottom', // Upper Bracket Round 2 (HLE's match) -> Upper Bracket Finals, bottom slot
-  '117030752644841631': 'top', // Upper Bracket Finals -> Finals, top slot
+  '117030752644841613': 'bottom', // Lower Bracket Round 1 -> Lower Bracket Round 2, lower/bottom slot (confirmed by user)
+  '117030752644841625': 'bottom', // Lower Bracket Round 2 -> Lower Bracket Round 3, lower/bottom slot (confirmed by user)
+  '117030752644841631': 'bottom', // Lower Bracket Round 3 -> Lower Bracket Finals, lower/bottom slot (confirmed by user)
+  '117030752644841619': 'top', // Upper Bracket Finals -> Finals, top slot (structurally consistent with LPL's own UBF->Finals convention, not independently confirmed for LCK specifically)
   '117030752644841637': 'bottom', // Lower Bracket Finals -> Finals, bottom slot
   // LPL Playoffs — confirmed directly from the user's explicit
   // per-connection top/bottom breakdown. Which specific UBQF match
@@ -1253,6 +1333,15 @@ const CONNECTOR_TARGET_OFFSETS: Record<string, 'top' | 'bottom'> = {
   '117155436343202184': 'bottom', // Lower Bracket Quarterfinals B -> Lower Bracket Semifinals, bottom slot
   '117155436343202190': 'bottom', // Lower Bracket Semifinals -> Lower Bracket Finals, bottom slot
   '117155436343202196': 'bottom', // Lower Bracket Finals -> Finals, bottom slot
+  // LEC Playoffs — confirmed directly, every one of these explicit in
+  // the user's own breakdown, no inference needed.
+  '115548681803406291': 'top', // KC vs GX -> Upper Bracket Round 2, top slot
+  '115548681803406297': 'bottom', // VIT vs G2 -> Upper Bracket Round 2, bottom slot
+  '115548681803406309': 'top', // Lower Bracket Round 1 (NAVI's match) -> Lower Bracket Round 2, top slot
+  '115548681803406315': 'bottom', // Lower Bracket Round 1 (MKOI's match) -> Lower Bracket Round 2, bottom slot
+  '115548681803406303': 'top', // Upper Bracket Round 2 -> Finals, top slot
+  '115548681803406321': 'bottom', // Lower Bracket Round 2 -> Lower Bracket Round 3, bottom slot
+  '115548681803406327': 'bottom', // Lower Bracket Round 3 -> Finals, bottom slot
 };
 
 function fetchEliminationBracketData(stageName: string, stage: RawStage): BracketData {
@@ -1347,19 +1436,31 @@ function fetchEliminationBracketData(stageName: string, stage: RawStage): Bracke
   // correctly regardless of processing order.
   let changed = true;
   let iterations = 0;
+  const confirmedMatchIds = new Set(confirmedMatches.map((m) => m.id));
   while (changed && iterations < matches.length) {
     changed = false;
     iterations++;
     for (const match of confirmedMatches) {
       if (!targetMatchIds.has(match.id) || roundNumberByMatchId.has(match.id)) continue;
+      // Only a source that's ITSELF confirmed/rendered counts here — a
+      // source excluded from confirmedMatches (fully TBD, no confirmed
+      // label, nothing else feeding it) never gets its own round
+      // assigned, so requiring it to resolve would permanently block
+      // this match too. This was a real, confirmed bug: matches
+      // ...841637 and ...841643 each depend in part on ...841631,
+      // which has no confirmed identity of its own — without this
+      // filter, both got stuck waiting forever and collapsed into a
+      // single group with an undefined round number, producing a real
+      // React "duplicate key" warning.
       const sourceIds = [
         ...Object.entries(KNOWN_MATCH_CONNECTIONS).filter(([, dest]) => dest === match.id).map(([src]) => src),
         ...Object.entries(KNOWN_LOSER_CONNECTIONS).filter(([, dest]) => dest === match.id).map(([src]) => src),
-      ];
+      ].filter((id) => confirmedMatchIds.has(id));
       const sourceRounds = sourceIds.map((id) => roundNumberByMatchId.get(id)).filter((r): r is number => r !== undefined);
-      // Only assign once every source has resolved — an incomplete set
-      // here means a source deeper in the chain hasn't been assigned
-      // yet, not that this match has no real predecessor at all.
+      // Only assign once every (confirmed) source has resolved — an
+      // incomplete set here means a source deeper in the chain hasn't
+      // been assigned yet, not that this match has no real predecessor
+      // at all.
       if (sourceRounds.length !== sourceIds.length || sourceIds.length === 0) continue;
       roundNumberByMatchId.set(match.id, Math.max(...sourceRounds) + 1);
       changed = true;
