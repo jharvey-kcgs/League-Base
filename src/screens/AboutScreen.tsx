@@ -18,8 +18,8 @@ const SECTIONS: Array<{ heading: string; body: string }> = [
       "Team names, logos, colors, and rosters are compiled from Liquipedia. Live " +
       'match schedules, results, standings, and VODs come from lolesports.com\u2019s ' +
       'own public data \u2014 free, no account needed. Coverage varies a little by ' +
-      'region (see the FAQ for LPL\u2019s VOD situation specifically, and LCP\u2019s ' +
-      'Swiss-stage Bracket section).',
+      'region (see the FAQ for LPL\u2019s VOD situation specifically, and how the ' +
+      'Bracket section works during Swiss, Play-Ins, or Playoffs).',
   },
   {
     heading: 'No account, no server',

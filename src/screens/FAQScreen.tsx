@@ -33,8 +33,8 @@ const FAQS: Array<{ q: string; a: string }> = [
     a: 'A small dot on the lane icon marking a bench player rather than a starter \u2014 same lane icon, so you can still tell what position they play.',
   },
   {
-    q: "What's the Bracket section on LCP's page?",
-    a: 'LCP is currently in a Swiss-format stage \u2014 instead of a fixed weekly schedule, teams get paired each round against others with the same win-loss record. The Bracket section shows those real pairings round by round, plus a lock icon for teams that have already secured a Playoffs spot and an \u2716 for teams that have been eliminated. Other regions only show this section while they\u2019re actually in a similar format \u2014 most of the time, Overall Standings above it is the one that matters.',
+    q: "What's the Bracket section on a region's page?",
+    a: 'Two different things can show up here, depending on what stage a region is actually in. During a Swiss-format stage (LCP\u2019s current format), teams get paired each round against others with the same win-loss record instead of a fixed weekly schedule \u2014 the Bracket section shows those real pairings round by round, plus a lock icon for teams that have already secured a Playoffs spot. During a Play-Ins or Playoffs stage (LCK, LPL, and LEC currently), it shows a real connected bracket \u2014 who\u2019s playing whom, and where the winner or loser of each match goes next. Either way, this section only appears while a region is actually in one of these formats \u2014 most of the time, Overall Standings above it is the one that matters.',
   },
 ];
 

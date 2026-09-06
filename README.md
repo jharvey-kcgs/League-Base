@@ -36,30 +36,36 @@ project depends on, and nothing it collects or transmits about you.
   (see [Color accessibility](#9-color-accessibility))
 - Real standings, schedules, rosters, and VODs for all 6 regions, sourced
   live from lolesports.com's own public data
-- A genuine Swiss-format bracket view for LCP — round-by-round, correctly
-  grouped by each team's actual record, not just a static list
-  (see [The Bracket system](#8-the-bracket-system))
+- A genuine Swiss-format bracket view for LCP, and real elimination
+  (Play-Ins/Playoffs) brackets for LCK, LPL, and LEC — hand-confirmed
+  connection data for each, since the raw API carries no structural
+  bracket information at all (see
+  [The Bracket system](#8-the-bracket-system))
 - 58 teams' worth of roster data, carefully researched and cross-verified
   against real sources — not guessed (see [Team data](#7-team-data-teamsjson))
 - A crash-safety net (see [Section 11](#11-testflight-release-readiness)) so an
   unexpected edge case shows a friendly recoverable screen, not a hard
   crash
 
-**Where this stands right now:** every screen, every region, and all 58
-teams have been individually clicked through and tested in both light and
-dark mode. The app itself is done in every way that matters — what's left
-is entirely TestFlight logistics (Apple Developer Program enrollment,
-`eas build`, TestFlight distribution), tracked in
-[Section 11](#11-testflight-release-readiness).
+**Where this stands right now:** the app has shipped through TestFlight
+and is in active use during the live LCK/LPL/LEC/CBLOL split, with the
+elimination bracket system (above) built and refined against real,
+in-progress tournament data as each region's Playoffs actually unfolded.
+The project completed a full Expo SDK upgrade (54 → 57, including the
+New Architecture requirement introduced at SDK 55) on 2026-08-28 — see
+[Gotcha #3](#gotcha-3-expo-go-only-ever-supports-the-latest-sdk--plan-for-this-before-it-happens-to-you)
+for the real experience of that. What's still genuinely open is tracked
+in [Section 12](#12-roadmap-genuinely-open-not-yet-built).
 
 ---
 
 ## 1. Prerequisites
 
-- **Node.js 20 LTS — `20.19.4` or newer.** That's the minimum Expo SDK 54
-  requires; anything below it will fail to start the dev server. Check
-  with `node -v`, and update via [nodejs.org](https://nodejs.org) or
-  `nvm install 20.19.4` if you're on nvm-windows.
+- **Node.js 22.13.x or newer.** SDK 57's documented minimum — a real jump
+  from SDK 54's 20.19.4 requirement, worth checking before anything else
+  if this project is ever picked back up after a break. Check with
+  `node -v`, and update via [nodejs.org](https://nodejs.org) or
+  `nvm install 22.13.0` if you're on nvm-windows.
 - [VS Code](https://code.visualstudio.com) (or any editor)
 - The **Expo Go** app on your phone, from the App Store / Play Store — lets
   you preview the app live during development with no build step. See
@@ -494,29 +500,122 @@ tracking, corrupting round assignment. `fetchBracketData` filters these
 out explicitly now, but it's the kind of thing that could resurface if
 this logic is ever copied elsewhere.
 
-**Deliberately scoped to Swiss stages only for actual rendering** —
-`fetchBracketData` only attempts the Swiss-shaped math when the *active*
-stage's real name is literally `"Swiss"`; for anything else (Play-Ins,
-Playoffs) it correctly reports the real stage name but returns zero
-rounds on purpose, rather than force Swiss-specific record-grouping math
-onto a fundamentally different bracket shape. `BracketRounds` disappears
-entirely (no section at all) whenever there's nothing built for the
-active stage — the same honest "nothing to show yet" behavior as when
-there's no active bracket at all, rather than a title with an empty or
-wrong body underneath it.
+**`fetchBracketData` (the function described above) is Swiss-specific
+only** — it only attempts the Swiss-shaped record-grouping math when the
+*active* stage's real name is literally `"Swiss"`. Every other bracket
+shape (Play-Ins, Playoffs) goes through a completely separate function,
+`fetchEliminationBracketData`, covered in full below. `BracketRounds`
+itself renders both — it disappears entirely (no section at all)
+whenever neither path has anything to show for the active stage, the
+same honest "nothing to show yet" behavior either way, rather than a
+title with an empty or wrong body underneath it.
 
-**What's NOT built yet**: the true visual elimination bracket (Play-Ins,
-a single-elim tree, and Playoffs, a double-elim tree with separate
-Upper/Lower Bracket paths — confirmed via real screenshots of both to be
-genuinely different shapes, not just "more rounds"). Every Play-Ins and
-Playoffs match seen so far is still `TBD vs TBD` with an empty
-`previousMatchIds`, so the real connectivity mechanism for either is
-genuinely unconfirmed. `BracketRound`/`BracketRounds` were built
-generically on purpose (nothing Swiss-specific baked into the component
-itself) so a real tree-shaped renderer can reuse this same component
-later — build against real data once each stage actually seeds real
-teams, not a guess, same reasoning as everything else in this project.
-Also relevant for a future Worlds screen (discussed, not started).
+### Elimination brackets (Play-Ins, Playoffs) — `fetchEliminationBracketData`
+
+Built and currently live for **LCK, LPL, and LEC's Play-Ins and/or
+Playoffs stages** (CBLOL's Playoffs bracket is on hold until its own
+teams are finalized). This was a genuinely harder problem than Swiss,
+worth documenting properly given how many real corrections it took to
+get right — future-you (or anyone else building the next region's
+bracket) should read this before assuming a new one will "just work."
+
+**The core problem, and why it can't be solved from the API alone:**
+`previousMatchIds` — the field that would tell you which match feeds
+into which — comes back completely empty for every Play-Ins and Playoffs
+match, for every region, always. There is no structural connectivity
+data in the raw response at all. Every single connection (who plays
+whom next, who drops down on a loss, which slot they land in) has to be
+hand-confirmed from the real, official bracket page and encoded directly
+into `lolesportsClient.ts` as static lookup tables, keyed by the raw
+match ID. This is fundamentally different from Swiss, where the shape
+itself falls out of a mathematical property (record-grouping); here,
+the *shape itself* is unknowable from data and has to be told to the
+code by a person who looked at the real page.
+
+**The seven lookup tables that make this work, all in
+`lolesportsClient.ts`, all keyed by raw match ID:**
+
+| Table | What it encodes |
+|---|---|
+| `KNOWN_MATCH_CONNECTIONS` | A match's **winner** advances to a specific destination match. Draws a connector line by default. |
+| `KNOWN_LOSER_CONNECTIONS` | A match's **loser** drops to a specific destination (genuine double-elimination only — a region with no lower bracket, or a match where losing means elimination, has no entry here for that match). Never draws a line, regardless of anything else. |
+| `KNOWN_ROUND_LABELS` | The real, confirmed stage name for a match (e.g. `"Upper Bracket Semifinals"`) — overrides the generic `"ROUND N"` fallback. Needed whenever two differently-named stages land in the same computed column and would otherwise be visually indistinguishable. |
+| `KNOWN_COLUMN_OVERRIDES` | Explicitly forces a match into a specific column, overriding the automatic "1 + max(source columns)" computation. Needed when the real bracket deliberately delays a stage further right than its data dependency alone implies (LCK's Upper Bracket Finals, held back so the Lower Bracket visually "catches up" first — LPL and LEC's shapes both resolved correctly with zero overrides, so don't assume every region needs one). |
+| `SUPPRESSED_CONNECTOR_LINES` | A win-path connection that's real (used for round placement and centering) but the official page draws no line for it anyway. First needed for LCK's Round 1 -> Upper Bracket Round 2, which genuinely has no line on the real page despite the winner clearly advancing. |
+| `CONNECTOR_TARGET_OFFSETS` | Makes a connector line land on a destination's specific top or bottom team slot instead of its vertical center — needed whenever a destination match has one "deposited" slot (arriving with no line) and one slot that genuinely advances via this specific line. |
+| `KNOWN_TEAM_ORDER_SWAPS` | The raw team array's `[0]`/`[1]` order doesn't always match the official page's actual visual top/bottom order — this set swaps a specific match's rendering order in that case. Confirmed real, not a hypothetical: happened for LPL's AL/BLG and NIP/IG matches and LCK's Upper Bracket Finals, all independently. |
+
+**Column placement is otherwise fully automatic**, via a fixed-point
+loop: a match with no confirmed predecessor starts at column 1; anything
+else lands one column after the latest of its own confirmed sources
+(via either table above), repeating until every match settles. Only
+override this when the real page's layout is confirmed to actually
+diverge from that computation — most brackets built so far didn't need
+one at all.
+
+**Real, hard-won lessons — worth reading before building the next
+region's bracket, not just skimming:**
+
+- **Sequential raw match ID order is not a reliable way to guess which
+  ID is which stage**, even though it looked that way at first (it
+  worked, by coincidence, for several of LCP's Playoffs stages). LCK's
+  build initially guessed match `...841619` was "Lower Bracket Round 2"
+  based on its position in the ID sequence — it was actually **Upper
+  Bracket Finals**, confirmed only once GEN's real win started showing
+  up there. When inference is genuinely unconfirmed, say so explicitly
+  rather than present a guess as settled — and expect to revisit it once
+  real results arrive.
+- **A completed match's raw team array can itself confirm or disprove an
+  ID mapping.** LCK's `...841613` was confirmed as the real Lower
+  Bracket Round 1 not by inference but because it showed up populated
+  with exactly the two real Round 1 losers, independent of any
+  positional guess.
+- **When your own inference is wrong more than once on the same
+  bracket, stop guessing and ask the person to check the real page
+  directly** — browser devtools' Network tab, filtered to the main
+  document/RSC payload rather than XHR, can reveal the same underlying
+  match IDs a site's own frontend renders from, if a `getStandings`-style
+  request isn't directly visible (worth trying `getStandings` first,
+  which is what this app's own client calls, before assuming a page
+  doesn't expose the data it's rendering from).
+- **A "who drops down where" rule can be genuinely undeterminable from
+  data alone, even once you know the correct destination IDs.** LCK's
+  rule — the lower-seeded Upper Bracket Round 2 loser drops to Lower
+  Bracket Round 2, the higher-seeded one skips ahead to Round 3 — can't
+  be resolved until *both* UBR2 matches have actually completed, since
+  seeding is an external fact, not something derivable from who beat
+  whom. The right move is to leave that specific connection absent
+  until it's genuinely knowable, not guess at a plausible-seeming
+  destination.
+- **Centering a match on "all of its sources" is wrong in general.** The
+  correct rule, confirmed against real page layouts on two separate
+  occasions: a loss-path source counts toward a destination's centering
+  *only if* it has no separate win-path destination of its own — a
+  source with both (its winner going one place, its loser going
+  another) has its own position already determined by that other
+  relationship, and pulling the destination toward it too reintroduces
+  visual overlap bugs that were specifically fixed once already.
+- **An unconfirmed source match must never block a downstream match's
+  own round resolution.** A match excluded from rendering (fully TBD,
+  no confirmed label, nothing else feeding it) can still appear as an
+  entry in a connection table without breaking anything — *unless* the
+  round-assignment loop naively waits for every listed source to
+  resolve regardless of whether that source is actually being rendered.
+  This produced a real React "duplicate key" warning once (two
+  unrelated matches both silently collapsing into a `roundNumber:
+  undefined` group) — fixed by filtering each match's source list down
+  to only sources that are themselves confirmed/rendered.
+- **Every one of the above is diagnosed and fixed with the same
+  discipline as Gotcha #10** — a real, current diagnostic log or a
+  direct, confirmed observation from the actual official page, never a
+  second guess stacked on an unconfirmed first one. Every genuinely
+  unconfirmed inference in the tables above is commented as such
+  in-place, not left to look more certain than it is.
+
+**Also relevant for a future Worlds screen** (discussed, not started) —
+Worlds' own bracket shape would need the exact same "get a real
+diagnostic log, confirm the raw match IDs directly, don't guess"
+treatment as every region here, from scratch.
 
 ---
 
@@ -586,16 +685,70 @@ newest on npm, which can silently mismatch and cause native-module errors
 that are confusing to trace back. Reserve plain `npm install` for the
 initial `npm install` with no arguments (Section 2).
 
-### Gotcha #3: Expo Go SDK mismatches
+### Gotcha #3: Expo Go only ever supports the latest SDK — plan for this before it happens to you
 
-Expo Go's build in the App Store / Play Store sometimes lags behind
-Expo's latest SDK release. This project targets **SDK 54** specifically
-(not 57, the newest one) because that's what the *published* Expo Go app
-actually supports on a physical phone right now — SDK 57 currently only
-runs via `eas go` or simulators. If `create-expo-app` or `expo upgrade`
-ever bumps this project to SDK 57, physical-device Expo Go testing will
-break with an "incompatible" error; step back down with
-`npx expo install expo@"~54.0.0" --fix`.
+This project is on **SDK 57** as of 2026-08-28, having genuinely lived through
+the failure mode this gotcha warns about: Expo Go auto-updates to whatever
+the newest SDK release is, with no way to keep an older version installed
+on a physical iOS device. When this project was still on SDK 54 and Expo
+Go silently updated to 57, Expo Go simply refused to open the project at
+all — "Project is incompatible with this version of Expo Go."
+
+**The actual upgrade path taken, in case this project (or a future one) is
+ever several SDK versions behind again:**
+
+1. **Migrate to the New Architecture first, while still on the old SDK** —
+   don't try to bundle this with the SDK bump itself. SDK 55 made the New
+   Architecture mandatory (SDK 54 was the last version supporting the Old
+   Architecture); Expo's own guidance is explicit about doing this as a
+   separate, earlier step. In this project's case there was nothing to
+   actually migrate — `newArchEnabled: true` was already set, and
+   `react-native-worklets` was already correctly wired for Reanimated 4 —
+   but that's not something to assume without checking `expo-doctor` and
+   the project's actual `app.config.js` first.
+2. **Upgrade one SDK version at a time** (54→55→56→57), not straight to
+   latest — `npx expo install expo@latest --fix` will happily jump past
+   several versions at once with no warning, confirmed the hard way
+   during this exact upgrade (it silently landed on SDK 57 when 55 was
+   the actual target; caught only by checking the resolved version
+   afterward). Pin explicitly instead: `npx expo install expo@"~55.0.0" --fix`.
+3. **Commit after each successful version bump.** If a later step needs
+   more work than expected, this keeps a clean rollback point instead of
+   several stacked, entangled changes.
+4. **Real device testing gets genuinely harder while mid-upgrade.**
+   Expo Go on a physical iOS device only ever runs the *one* SDK version
+   it's currently built for — there's no way to have "SDK 55 Expo Go" and
+   "SDK 57 Expo Go" both installed side by side. For a project sitting on
+   an intermediate SDK version with no matching Expo Go available,
+   `sign.expo.dev` can produce a real, working build for that exact SDK
+   version, signed with a free Apple ID (no paid developer account
+   needed just for this) — but the resulting certificate expires after
+   about a week. Given SDK 56 and 57 are both officially described as
+   low-risk, non-breaking upgrades, this project's own upgrade relied on
+   `expo-doctor` and `tsc --noEmit` alone for those two intermediate
+   steps, saving the real device test for landing on SDK 57 itself
+   (where Expo Go just works again with zero extra setup) — a reasonable
+   trade for a low-risk step, not a default to reach for on every future
+   upgrade regardless of risk.
+5. [Anthropic's `expo-upgrade` skill](https://github.com/expo/skills) (for
+   Claude Code) automated most of the actual package-version and
+   config-file work across these steps. One install snag worth knowing:
+   `/plugin marketplace add expo/skills` fails outright if Git doesn't yet
+   trust GitHub's SSH host key (fix: `ssh -T git@github.com` once,
+   answering "yes" to the fingerprint prompt) — and even past that, the
+   default SSH-based clone fails again for anyone without a personal
+   SSH key registered on GitHub, since marketplace repos are public and
+   read-only and never actually needed SSH authentication in the first
+   place (fix: add the marketplace via its explicit HTTPS URL instead,
+   `/plugin marketplace add https://github.com/expo/skills.git`). A
+   further snag specific to this one repository: it has a git submodule
+   pointing to a private Expo-internal repo, which breaks the marketplace
+   clone entirely regardless of HTTPS vs SSH — worked around by cloning
+   with `--no-recurse-submodules` and copying just the skill's own folder
+   (found under `expo-upgrade/`, not `upgrading-expo/` as the published
+   plugin name might suggest) directly into `~/.claude/skills/`. The
+   broken submodule (an internal eval harness) isn't referenced by the
+   skill itself, so skipping it lost nothing.
 
 ### Gotcha #4: ERESOLVE peer dependency errors
 
@@ -636,7 +789,7 @@ already named correctly — comes up if you split new files out of them.
 ### Gotcha #7: Reanimated 4 needs `react-native-worklets`, not just `react-native-reanimated/plugin`
 
 Hit this bringing in the Drawer (`@react-navigation/drawer` depends on
-Reanimated). SDK 54 installs Reanimated 4, which requires the New
+Reanimated). SDK 54+ installs Reanimated 4, which requires the New
 Architecture (already on — see `app.config.js`'s `newArchEnabled`) and moved its
 Babel plugin into a separate `react-native-worklets` package. Symptom:
 
@@ -854,14 +1007,12 @@ category but no longer literally nothing.)
 
 ## 12. Roadmap (genuinely open, not yet built)
 
-- **Real visual elimination bracket renderers for Play-Ins (single-elim
-  tree) and Playoffs (double-elim, separate Upper/Lower Bracket paths) —
-  confirmed genuinely different shapes from each other via real
-  screenshots, not just “more rounds” than Swiss.** Blocked on real
-  seeded data for each, not effort — the stage-detection and dynamic
-  naming that feeds into this is already built and correctly identifies
-  whichever stage is genuinely active. See
-  [The Bracket system](#8-the-bracket-system) for why.
+- **CBLOL's Playoffs bracket** — the same elimination-bracket system
+  built for LCK, LPL, and LEC (see
+  [The Bracket system](#8-the-bracket-system)) hasn't been built for
+  CBLOL yet, on hold specifically until its own Playoffs teams are
+  finalized — not a technical gap, the same "don't build against a
+  guess" reasoning as everything else here.
 - **A Worlds EventScreen** — its own Drawer entry (not shoehorned into the
   per-region navigation, since Worlds spans all 6 regions at once):
   Upcoming/Recent Games, a Bracket section (table format during
