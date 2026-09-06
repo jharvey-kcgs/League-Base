@@ -1124,6 +1124,16 @@ const KNOWN_LOSER_CONNECTIONS: Record<string, string> = {
   // own loser deposits into Lower Bracket Finals, per the rule
   // confirmed several turns ago for this exact bracket.
   '117030752644841619': '117030752644841637', // Upper Bracket Finals loser -> Lower Bracket Finals
+  // 2026-08-28: the seed-dependent split for Upper Bracket Round 2's
+  // two losers, previously left unconnected since it couldn't be
+  // determined until both UBR2 matches completed. Now determinable:
+  // T1 (from match 607) is confirmed in Lower Bracket Round 3 (the
+  // higher seed, skipping ahead), which by elimination means KT (from
+  // match 601) is the lower seed, dropping to Lower Bracket Round 2
+  // instead — consistent with DK (Lower Bracket Round 1's winner)
+  // occupying LBR2's other slot.
+  '117030752644841601': '117030752644841625', // Upper Bracket Round 2 (GEN's match) loser (KT) -> Lower Bracket Round 2, bottom slot
+  '117030752644841607': '117030752644841631', // Upper Bracket Round 2 (HLE's match) loser (T1) -> Lower Bracket Round 3, top slot
   '117030752644841589': '117030752644841613', // T1 vs BFX loser -> Lower Bracket Round 1
   '117030752644841595': '117030752644841613', // DK vs KT loser -> Lower Bracket Round 1
   // LPL Playoffs — every one of these is explicitly "deposited, no
@@ -1300,6 +1310,14 @@ const KNOWN_TEAM_ORDER_SWAPS = new Set<string>([
   '117155436343202160', // LPL Playoffs — Lower Bracket Round 1 (NIP's match)
   '117155436343202166', // LPL Playoffs — Lower Bracket Round 1 (IG's match)
   '117030752644841619', // LCK Regional Championship — Upper Bracket Finals: GEN (from the first/top UBR2 match) should display first, but raw data lists it as team[1]. Consistent with the existing connectorTargetOffset for match 601 ('top'), which already assumed this
+  // 2026-08-28, confirmed directly by the user:
+  '117030752644841631', // LCK — Lower Bracket Round 3: T1 should display first (top), DK second (bottom)
+  '117030752644841637', // LCK — Lower Bracket Finals: HLE should display first (top), T1 second (bottom)
+  '117030752644841643', // LCK — Finals: GEN should display first (top)
+  '117155436343202172', // LPL — Upper Bracket Finals: AL should display first (top), BLG second (bottom)
+  '117155436343202178', // LPL — Lower Bracket Quarterfinals A: NIP should display first (top), LGD second (bottom)
+  '117155436343202184', // LPL — Lower Bracket Quarterfinals B: IG should display first (top), WE second (bottom)
+  '117155436343202190', // LPL — Lower Bracket Semifinals: IG should display first (top), LGD second (bottom)
 ]);
 
 const CONNECTOR_TARGET_OFFSETS: Record<string, 'top' | 'bottom'> = {
