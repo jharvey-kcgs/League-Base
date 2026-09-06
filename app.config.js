@@ -55,6 +55,7 @@ module.exports = {
       bundler: 'metro',
     },
     plugins: [
+      'expo-font',
       [
         'expo-splash-screen',
         {
