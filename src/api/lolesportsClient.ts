@@ -1080,6 +1080,26 @@ const KNOWN_MATCH_CONNECTIONS: Record<string, string> = {
   '115548681803406303': '115548681803406333', // Upper Bracket Round 2 winner -> Finals, top slot
   '115548681803406321': '115548681803406327', // Lower Bracket Round 2 winner -> Lower Bracket Round 3, bottom slot
   '115548681803406327': '115548681803406333', // Lower Bracket Round 3 winner -> Finals, bottom slot
+  // CBLOL Playoffs (2026) — confirmed directly and completely from the
+  // user's own detailed breakdown, exact match ID for every stage. One
+  // deliberate gap: Upper Bracket Semifinals' two losers each drop to
+  // a different destination (one to Lower Bracket Round 2, one to
+  // Lower Bracket Semifinals) depending on a seed comparison that
+  // can't be resolved until both UBSF matches actually complete —
+  // same genuinely-undeterminable situation as LCK's own UBR2 losers
+  // — so neither connection is added yet. The column structure
+  // resolves correctly without them regardless, since Lower Bracket
+  // Round 2 and Lower Bracket Semifinals each still have their one
+  // confirmed win-path source.
+  '115565671526403057': '115565671526403069', // FUR vs RED winner -> Upper Bracket Semifinals (FUR's match), bottom slot
+  '115565671526403063': '115565671526403075', // PAIN vs VKS winner -> Upper Bracket Semifinals (PAIN's match), bottom slot
+  '115565671526403069': '115565671526468623', // Upper Bracket Semifinals (FUR's match) winner -> Upper Bracket Finals, top slot
+  '115565671526403075': '115565671526468623', // Upper Bracket Semifinals (PAIN's match) winner -> Upper Bracket Finals, bottom slot
+  '115565671526403081': '115565671526468629', // Lower Bracket Round 1 winner -> Lower Bracket Round 2, bottom slot
+  '115565671526468629': '115565671526468635', // Lower Bracket Round 2 winner -> Lower Bracket Semifinals, bottom slot
+  '115565671526468635': '115565671526468641', // Lower Bracket Semifinals winner -> Lower Bracket Finals, bottom slot
+  '115565671526468623': '115565671526468647', // Upper Bracket Finals winner -> Finals, top slot
+  '115565671526468641': '115565671526468647', // Lower Bracket Finals winner -> Finals, bottom slot
 };
 
 /** Same discipline as KNOWN_MATCH_CONNECTIONS above, but for the LOSER's
@@ -1155,6 +1175,16 @@ const KNOWN_LOSER_CONNECTIONS: Record<string, string> = {
   '115548681803406291': '115548681803406309', // KC vs GX loser -> Lower Bracket Round 1 (NAVI's match)
   '115548681803406297': '115548681803406315', // VIT vs G2 loser -> Lower Bracket Round 1 (MKOI's match)
   '115548681803406303': '115548681803406327', // Upper Bracket Round 2 loser -> Lower Bracket Round 3, top slot
+  // CBLOL Playoffs — both UBQF matches' losers drop to the single Lower
+  // Bracket Round 1 match together (matches the raw data: it already
+  // has both real losers, VKS and RED). Upper Bracket Finals' loser
+  // deposits into Lower Bracket Finals' top slot, explicitly "no
+  // connecting line" per the user. The two UBSF losers' own split
+  // (Lower Bracket Round 2 vs Lower Bracket Semifinals) is deliberately
+  // absent here — see KNOWN_MATCH_CONNECTIONS' own comment for why.
+  '115565671526403057': '115565671526403081', // FUR vs RED loser -> Lower Bracket Round 1
+  '115565671526403063': '115565671526403081', // PAIN vs VKS loser -> Lower Bracket Round 1
+  '115565671526468623': '115565671526468641', // Upper Bracket Finals loser -> Lower Bracket Finals, top slot
 };
 
 /** Explicit, directly-confirmed stage name for a specific matchId — same
@@ -1240,6 +1270,17 @@ const KNOWN_ROUND_LABELS: Record<string, string> = {
   '115548681803406321': 'Lower Bracket Round 2',
   '115548681803406327': 'Lower Bracket Round 3',
   '115548681803406333': 'Finals',
+  // CBLOL Playoffs — confirmed directly from the user's own breakdown.
+  '115565671526403057': 'Upper Bracket Quarterfinals',
+  '115565671526403063': 'Upper Bracket Quarterfinals',
+  '115565671526403069': 'Upper Bracket Semifinals',
+  '115565671526403075': 'Upper Bracket Semifinals',
+  '115565671526403081': 'Lower Bracket Round 1',
+  '115565671526468623': 'Upper Bracket Finals',
+  '115565671526468629': 'Lower Bracket Round 2',
+  '115565671526468635': 'Lower Bracket Semifinals',
+  '115565671526468641': 'Lower Bracket Finals',
+  '115565671526468647': 'Finals',
 };
 
 /** Explicit column-number override for a specific matchId — used only
@@ -1320,6 +1361,11 @@ const KNOWN_TEAM_ORDER_SWAPS = new Set<string>([
   '117155436343202190', // LPL — Lower Bracket Semifinals: IG should display first (top), LGD second (bottom)
   '115548681803406327', // LEC — Lower Bracket Round 3: KC should display first (top), TBD second (bottom)
   '115548681803406333', // LEC — Finals: G2 should display first (top), TBD second (bottom)
+  '115565671526403057', // CBLOL — Upper Bracket Quarterfinals (FUR's match): FUR should display first (top), RED second (bottom)
+  '115565671526403063', // CBLOL — Upper Bracket Quarterfinals (PAIN's match): VKS should display first (top), PAIN second (bottom)
+  '115565671526403081', // CBLOL — Lower Bracket Round 1: RED should display first (top), VKS second (bottom)
+  '115548681803406309', // LEC — Lower Bracket Round 1 (NAVI's match): NAVI should display first (top), TBD second (bottom)
+  '115548681803406315', // LEC — Lower Bracket Round 1 (MKOI's match): MKOI should display first (top), TBD second (bottom)
 ]);
 
 const CONNECTOR_TARGET_OFFSETS: Record<string, 'top' | 'bottom'> = {
@@ -1362,6 +1408,16 @@ const CONNECTOR_TARGET_OFFSETS: Record<string, 'top' | 'bottom'> = {
   '115548681803406303': 'top', // Upper Bracket Round 2 -> Finals, top slot
   '115548681803406321': 'bottom', // Lower Bracket Round 2 -> Lower Bracket Round 3, bottom slot
   '115548681803406327': 'bottom', // Lower Bracket Round 3 -> Finals, bottom slot
+  // CBLOL Playoffs — confirmed directly from the user's own breakdown.
+  '115565671526403057': 'bottom', // FUR vs RED -> Upper Bracket Semifinals, bottom slot
+  '115565671526403063': 'bottom', // PAIN vs VKS -> Upper Bracket Semifinals, bottom slot
+  '115565671526403069': 'top', // Upper Bracket Semifinals (FUR's match) -> Upper Bracket Finals, top slot
+  '115565671526403075': 'bottom', // Upper Bracket Semifinals (PAIN's match) -> Upper Bracket Finals, bottom slot
+  '115565671526403081': 'bottom', // Lower Bracket Round 1 -> Lower Bracket Round 2, bottom slot
+  '115565671526468629': 'bottom', // Lower Bracket Round 2 -> Lower Bracket Semifinals, bottom slot
+  '115565671526468635': 'bottom', // Lower Bracket Semifinals -> Lower Bracket Finals, bottom slot
+  '115565671526468623': 'top', // Upper Bracket Finals -> Finals, top slot
+  '115565671526468641': 'bottom', // Lower Bracket Finals -> Finals, bottom slot
 };
 
 function fetchEliminationBracketData(stageName: string, stage: RawStage): BracketData {
