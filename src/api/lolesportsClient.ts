@@ -1318,6 +1318,8 @@ const KNOWN_TEAM_ORDER_SWAPS = new Set<string>([
   '117155436343202178', // LPL — Lower Bracket Quarterfinals A: NIP should display first (top), LGD second (bottom)
   '117155436343202184', // LPL — Lower Bracket Quarterfinals B: IG should display first (top), WE second (bottom)
   '117155436343202190', // LPL — Lower Bracket Semifinals: IG should display first (top), LGD second (bottom)
+  '115548681803406327', // LEC — Lower Bracket Round 3: KC should display first (top), TBD second (bottom)
+  '115548681803406333', // LEC — Finals: G2 should display first (top), TBD second (bottom)
 ]);
 
 const CONNECTOR_TARGET_OFFSETS: Record<string, 'top' | 'bottom'> = {
