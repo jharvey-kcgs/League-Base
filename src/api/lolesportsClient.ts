@@ -1366,6 +1366,8 @@ const KNOWN_TEAM_ORDER_SWAPS = new Set<string>([
   '115565671526403081', // CBLOL — Lower Bracket Round 1: RED should display first (top), VKS second (bottom)
   '115548681803406309', // LEC — Lower Bracket Round 1 (NAVI's match): NAVI should display first (top), TBD second (bottom)
   '115548681803406315', // LEC — Lower Bracket Round 1 (MKOI's match): MKOI should display first (top), TBD second (bottom)
+  '117155436343202196', // LPL — Lower Bracket Finals: AL should display first (top), IG second (bottom)
+  '117155436343202202', // LPL — Finals: BLG should display first (top), TBD second (bottom)
 ]);
 
 const CONNECTOR_TARGET_OFFSETS: Record<string, 'top' | 'bottom'> = {

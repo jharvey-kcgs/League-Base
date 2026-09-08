@@ -23,10 +23,11 @@ export type RootStackParamList = {
   TeamDetail: { teamId: string };
 };
 
-// Drawer: "My Team" (favorite team's Home) plus one entry per region, each
-// its own nested Stack (RegionStackParamList below).
+// Drawer: "My Team" (favorite team's Home), "Worlds", plus one entry per
+// region, each its own nested Stack (RegionStackParamList below).
 export type DrawerParamList = {
   MyTeam: undefined;
+  Worlds: undefined;
   LCS: NavigatorScreenParams<RegionStackParamList>;
   LEC: NavigatorScreenParams<RegionStackParamList>;
   LCK: NavigatorScreenParams<RegionStackParamList>;
@@ -44,14 +45,25 @@ export type RegionStackParamList = {
   Team: { teamId: string };
 };
 
-/** HomeScreen is the only screen that needs a composite type — it's the
- * only one that calls methods belonging to an outer navigator
+/** HomeScreen and WorldsScreen are the only screens that need a composite
+ * type — both call methods belonging to an outer navigator
  * (navigation.openDrawer() is the Drawer's, navigation.navigate('Settings')
- * is the root Stack's) from inside a nested screen. RegionHomeScreen and
- * TeamScreen only ever navigate within their own RegionStack, so a plain
- * NativeStackScreenProps<RegionStackParamList, ...> is enough for them. */
+ * is the root Stack's) from inside a screen that sits directly in the
+ * Drawer, not nested inside a region's own RegionStack. RegionHomeScreen
+ * and TeamScreen only ever navigate within their own RegionStack, so a
+ * plain NativeStackScreenProps<RegionStackParamList, ...> is enough for
+ * them. */
 export type HomeScreenProps = CompositeScreenProps<
   DrawerScreenProps<DrawerParamList, 'MyTeam'>,
+  NativeStackScreenProps<RootStackParamList>
+>;
+
+/** Same reasoning as HomeScreenProps above — WorldsScreen sits directly in
+ * the Drawer (not nested inside a RegionStack), so it needs the same
+ * composite type to reach both openDrawer() and the root Stack's
+ * navigate('Settings')/navigate('Search')/navigate('TeamDetail', ...). */
+export type WorldsScreenProps = CompositeScreenProps<
+  DrawerScreenProps<DrawerParamList, 'Worlds'>,
   NativeStackScreenProps<RootStackParamList>
 >;
 

@@ -3,6 +3,7 @@ import { createDrawerNavigator } from '@react-navigation/drawer';
 import { useTheme } from '../theme/ThemeContext';
 import { headerTitleStyle } from '../theme/fonts';
 import { HomeScreen } from '../screens/HomeScreen';
+import { WorldsScreen } from '../screens/WorldsScreen';
 import { createRegionStack } from './RegionStack';
 import type { DrawerParamList } from './types';
 
@@ -48,6 +49,7 @@ export function RootDrawer({ swipeEnabled = true }: { swipeEnabled?: boolean }) 
       }}
     >
       <Drawer.Screen name="MyTeam" component={HomeScreen} options={{ title: 'My Team' }} />
+      <Drawer.Screen name="Worlds" component={WorldsScreen} options={{ title: 'Worlds' }} />
       <Drawer.Screen name="LCS" component={LCSStack} />
       <Drawer.Screen name="LEC" component={LECStack} />
       <Drawer.Screen name="LCK" component={LCKStack} />
