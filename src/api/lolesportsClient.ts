@@ -1100,6 +1100,23 @@ const KNOWN_MATCH_CONNECTIONS: Record<string, string> = {
   '115565671526468635': '115565671526468641', // Lower Bracket Semifinals winner -> Lower Bracket Finals, bottom slot
   '115565671526468623': '115565671526468647', // Upper Bracket Finals winner -> Finals, top slot
   '115565671526468641': '115565671526468647', // Lower Bracket Finals winner -> Finals, bottom slot
+  // LCS Playoffs (2026) — confirmed directly and completely from the
+  // user's own detailed breakdown, exact match ID for every stage. One
+  // deliberate gap: Upper Bracket Semifinals' two losers each drop to
+  // a different destination (one to Lower Bracket Round 2, one to
+  // Lower Bracket Semifinals) depending on a seed comparison that
+  // can't be resolved until both UBSF matches actually complete —
+  // same genuinely-undeterminable situation as every other region's
+  // own UBSF/UBR2 losers — so neither connection is added yet.
+  '115565004607949375': '115565004607949387', // C9 vs SR winner -> Upper Bracket Semifinals (LYON's match), bottom slot
+  '115565004607949381': '115565004607949393', // FLY vs SEN winner -> Upper Bracket Semifinals (TLAW's match), bottom slot
+  '115565004607949387': '115565004607949405', // Upper Bracket Semifinals (LYON's match) winner -> Upper Bracket Finals, top slot
+  '115565004607949393': '115565004607949405', // Upper Bracket Semifinals (TLAW's match) winner -> Upper Bracket Finals, bottom slot
+  '115565004607949399': '115565004607949411', // Lower Bracket Round 1 winner -> Lower Bracket Round 2, bottom slot
+  '115565004607949411': '115565004607949417', // Lower Bracket Round 2 winner -> Lower Bracket Semifinals, bottom slot
+  '115565004607949417': '115565004607949423', // Lower Bracket Semifinals winner -> Lower Bracket Finals, bottom slot
+  '115565004607949405': '115565004607949429', // Upper Bracket Finals winner -> Finals, top slot
+  '115565004607949423': '115565004607949429', // Lower Bracket Finals winner -> Finals, bottom slot
 };
 
 /** Same discipline as KNOWN_MATCH_CONNECTIONS above, but for the LOSER's
@@ -1185,6 +1202,15 @@ const KNOWN_LOSER_CONNECTIONS: Record<string, string> = {
   '115565671526403057': '115565671526403081', // FUR vs RED loser -> Lower Bracket Round 1
   '115565671526403063': '115565671526403081', // PAIN vs VKS loser -> Lower Bracket Round 1
   '115565671526468623': '115565671526468641', // Upper Bracket Finals loser -> Lower Bracket Finals, top slot
+  // LCS Playoffs — both UBQF matches' losers drop to the single Lower
+  // Bracket Round 1 match together (matches the raw data: it already
+  // has both real losers, SEN and SR). Upper Bracket Finals' loser
+  // deposits into Lower Bracket Finals' top slot, explicitly "no
+  // connecting line" per the user, which the loss-path table naturally
+  // provides.
+  '115565004607949375': '115565004607949399', // C9 vs SR loser -> Lower Bracket Round 1
+  '115565004607949381': '115565004607949399', // FLY vs SEN loser -> Lower Bracket Round 1
+  '115565004607949405': '115565004607949423', // Upper Bracket Finals loser -> Lower Bracket Finals, top slot
 };
 
 /** Explicit, directly-confirmed stage name for a specific matchId — same
@@ -1281,6 +1307,17 @@ const KNOWN_ROUND_LABELS: Record<string, string> = {
   '115565671526468635': 'Lower Bracket Semifinals',
   '115565671526468641': 'Lower Bracket Finals',
   '115565671526468647': 'Finals',
+  // LCS Playoffs — confirmed directly from the user's own breakdown.
+  '115565004607949375': 'Upper Bracket Quarterfinals',
+  '115565004607949381': 'Upper Bracket Quarterfinals',
+  '115565004607949387': 'Upper Bracket Semifinals',
+  '115565004607949393': 'Upper Bracket Semifinals',
+  '115565004607949399': 'Lower Bracket Round 1',
+  '115565004607949405': 'Upper Bracket Finals',
+  '115565004607949411': 'Lower Bracket Round 2',
+  '115565004607949417': 'Lower Bracket Semifinals',
+  '115565004607949423': 'Lower Bracket Finals',
+  '115565004607949429': 'Finals',
 };
 
 /** Explicit column-number override for a specific matchId — used only
@@ -1346,31 +1383,30 @@ const SUPPRESSED_CONNECTOR_LINES = new Set<string>([
  * match in this bracket too, rather than assuming any one is fine by
  * default — not confirmed to be a general pattern beyond this bracket. */
 const KNOWN_TEAM_ORDER_SWAPS = new Set<string>([
-  '117155436343202148', // LPL Playoffs — Upper Bracket Semifinals (AL's match)
-  '117155436343202154', // LPL Playoffs — Upper Bracket Semifinals (BLG's match)
-  '117155436343202160', // LPL Playoffs — Lower Bracket Round 1 (NIP's match)
-  '117155436343202166', // LPL Playoffs — Lower Bracket Round 1 (IG's match)
-  '117030752644841619', // LCK Regional Championship — Upper Bracket Finals: GEN (from the first/top UBR2 match) should display first, but raw data lists it as team[1]. Consistent with the existing connectorTargetOffset for match 601 ('top'), which already assumed this
-  // 2026-08-28, confirmed directly by the user:
-  '117030752644841631', // LCK — Lower Bracket Round 3: T1 should display first (top), DK second (bottom)
-  '117030752644841637', // LCK — Lower Bracket Finals: HLE should display first (top), T1 second (bottom)
-  '117030752644841643', // LCK — Finals: GEN should display first (top)
-  '117155436343202172', // LPL — Upper Bracket Finals: AL should display first (top), BLG second (bottom)
-  '117155436343202178', // LPL — Lower Bracket Quarterfinals A: NIP should display first (top), LGD second (bottom)
-  '117155436343202184', // LPL — Lower Bracket Quarterfinals B: IG should display first (top), WE second (bottom)
-  '117155436343202190', // LPL — Lower Bracket Semifinals: IG should display first (top), LGD second (bottom)
-  '115548681803406327', // LEC — Lower Bracket Round 3: KC should display first (top), TBD second (bottom)
-  '115548681803406333', // LEC — Finals: G2 should display first (top), TBD second (bottom)
-  '115565671526403057', // CBLOL — Upper Bracket Quarterfinals (FUR's match): FUR should display first (top), RED second (bottom)
-  '115565671526403063', // CBLOL — Upper Bracket Quarterfinals (PAIN's match): VKS should display first (top), PAIN second (bottom)
-  '115565671526403081', // CBLOL — Lower Bracket Round 1: RED should display first (top), VKS second (bottom)
-  '115548681803406309', // LEC — Lower Bracket Round 1 (NAVI's match): NAVI should display first (top), TBD second (bottom)
-  '115548681803406315', // LEC — Lower Bracket Round 1 (MKOI's match): MKOI should display first (top), TBD second (bottom)
-  '117155436343202196', // LPL — Lower Bracket Finals: AL should display first (top), IG second (bottom)
-  '117155436343202202', // LPL — Finals: BLG should display first (top), TBD second (bottom)
+  // 2026-09-09: reduced to the only two entries that can genuinely never
+  // be removed by this approach — both are Round 1 matches with no
+  // incoming connection at all (nothing precedes them, so there's
+  // nothing for the derivation logic in fetchEliminationBracketData to
+  // work from, no matter how many other offsets get confirmed
+  // elsewhere). Every other entry that used to live here has been
+  // converted to a real, confirmed offset in either
+  // CONNECTOR_TARGET_OFFSETS or LOSER_CONNECTOR_TARGET_OFFSETS instead,
+  // removed only after verifying the relevant connection actually had a
+  // confirmed offset for the derivation to use.
+  '115565671526403057', // CBLOL — Upper Bracket Quarterfinals (FUR's match): Round 1, no incoming connection at all
+  '115565671526403063', // CBLOL — Upper Bracket Quarterfinals (PAIN's match): same, Round 1
 ]);
 
 const CONNECTOR_TARGET_OFFSETS: Record<string, 'top' | 'bottom'> = {
+  // LCP Playoffs — confirmed directly by the user; this whole bracket
+  // predates the connectorTargetOffset system entirely (it was the
+  // first one built in this project), so it never had any slot offsets
+  // set at all, relying on raw, unverified team order the whole time.
+  '116769742220455389': 'top', // CTBC Flying Oyster vs MVK Esports winner -> Upper Bracket Finals, top slot
+  '116769742220520931': 'bottom', // Team Secret Whales vs GAM Esports winner -> Upper Bracket Finals, bottom slot
+  '116769742220520937': 'top', // Upper Bracket Finals winner -> Finals, top slot
+  '116769742220520943': 'bottom', // Upper Bracket Semifinals winner -> Lower Bracket Finals, bottom slot
+  '116769742220520949': 'bottom', // Lower Bracket Finals winner -> Finals, bottom slot
   // 613's and 619's original entries here are not restored — each was
   // for a connection that isn't being restored either (see
   // KNOWN_MATCH_CONNECTIONS' own comment: both were directly
@@ -1420,6 +1456,70 @@ const CONNECTOR_TARGET_OFFSETS: Record<string, 'top' | 'bottom'> = {
   '115565671526468635': 'bottom', // Lower Bracket Semifinals -> Lower Bracket Finals, bottom slot
   '115565671526468623': 'top', // Upper Bracket Finals -> Finals, top slot
   '115565671526468641': 'bottom', // Lower Bracket Finals -> Finals, bottom slot
+  // LCS Playoffs — confirmed directly from the user's own breakdown.
+  '115565004607949375': 'bottom', // C9 vs SR -> Upper Bracket Semifinals (LYON's match), bottom slot
+  '115565004607949381': 'bottom', // FLY vs SEN -> Upper Bracket Semifinals (TLAW's match), bottom slot
+  '115565004607949387': 'top', // Upper Bracket Semifinals (LYON's match) -> Upper Bracket Finals, top slot
+  '115565004607949393': 'bottom', // Upper Bracket Semifinals (TLAW's match) -> Upper Bracket Finals, bottom slot
+  '115565004607949399': 'bottom', // Lower Bracket Round 1 -> Lower Bracket Round 2, bottom slot
+  '115565004607949411': 'bottom', // Lower Bracket Round 2 -> Lower Bracket Semifinals, bottom slot
+  '115565004607949417': 'bottom', // Lower Bracket Semifinals -> Lower Bracket Finals, bottom slot
+  '115565004607949405': 'top', // Upper Bracket Finals -> Finals, top slot
+  '115565004607949423': 'bottom', // Lower Bracket Finals -> Finals, bottom slot
+};
+
+/** Same shape as CONNECTOR_TARGET_OFFSETS above, but for a match's LOSS
+ * destination specifically — genuinely needs its own separate table,
+ * not a shared one keyed by source id alone: a single match's WINNER and
+ * LOSER often go to different slots of different destinations (Upper
+ * Bracket Finals is the clearest recurring case — its winner needs 'top'
+ * for Finals, but its loser can need a completely different slot for
+ * Lower Bracket Finals), so one shared value per source id can't hold
+ * both. A source only ever loses once, to one destination, so keying
+ * this table by source id alone is safe here in a way it wasn't for the
+ * shared win-path table.
+ *
+ * Values below are derived, not independently reconfirmed: for any
+ * destination match with a known win-path sibling connection (the other
+ * slot's source), the loss-path source takes the OPPOSITE slot — a
+ * match only has two slots, so if one is confirmed 'bottom' the other
+ * is necessarily 'top'. A destination whose only sources are BOTH
+ * loss-path (Lower Bracket Round 1 in several regions, where two
+ * Upper Bracket Round 1 losers face each other directly) has no win-path
+ * sibling to derive from and is deliberately left unset here — this
+ * table only holds what could be reasoned from data actually shared
+ * elsewhere, not guessed. Team order for those specific matches falls
+ * back to KNOWN_TEAM_ORDER_SWAPS, same as before this table existed. */
+const LOSER_CONNECTOR_TARGET_OFFSETS: Record<string, 'top' | 'bottom'> = {
+  // LCP
+  '116769742220520937': 'top', // Upper Bracket Finals loser -> Lower Bracket Finals, top slot (directly confirmed by the user)
+  // LCK
+  '117030752644841619': 'top', // Upper Bracket Finals loser -> Lower Bracket Finals (sibling: 631->637 is 'bottom')
+  '117030752644841601': 'top', // Upper Bracket Round 2 (GEN's match) loser -> Lower Bracket Round 2 (sibling: 613->625 is 'bottom')
+  '117030752644841607': 'top', // Upper Bracket Round 2 (HLE's match) loser -> Lower Bracket Round 3 (sibling: 625->631 is 'bottom')
+  // LPL
+  '117155436343202172': 'top', // Upper Bracket Finals loser -> Lower Bracket Finals (sibling: 190->196 is 'bottom')
+  '117155436343202148': 'bottom', // Upper Bracket Semifinals (AL's match) loser -> Lower Bracket Quarterfinals A (sibling: 160->178 is 'top')
+  '117155436343202154': 'bottom', // Upper Bracket Semifinals (BLG's match) loser -> Lower Bracket Quarterfinals B (sibling: 166->184 is 'top')
+  // LEC
+  '115548681803406303': 'top', // Upper Bracket Round 2 loser -> Lower Bracket Round 3 (sibling: 321->327 is 'bottom')
+  // CBLOL
+  '115565671526468623': 'top', // Upper Bracket Finals loser -> Lower Bracket Finals (sibling: 635->641 is 'bottom')
+  // LCS
+  '115565004607949405': 'top', // Upper Bracket Finals loser -> Lower Bracket Finals (sibling: 417->423 is 'bottom')
+  // The five entries below are converted from what was previously a
+  // manual KNOWN_TEAM_ORDER_SWAPS entry, not derived from a sibling —
+  // each was already directly confirmed by the user at the time (e.g.
+  // "NAVI should display first (top)"), and converting that existing
+  // confirmation into an offset here does the same job the sibling-
+  // derivation approach does elsewhere, for cases where no win-path
+  // sibling exists to derive an offset from at all (a Lower Bracket
+  // Round 1 match fed only by a single loss-path connection).
+  '117155436343202136': 'top', // TES vs LGD loser -> Lower Bracket Round 1 (NIP's match), top slot (NIP confirmed to display first)
+  '117155436343202142': 'top', // JDG vs WE loser -> Lower Bracket Round 1 (IG's match), top slot (IG confirmed to display first)
+  '115565671526403057': 'top', // FUR vs RED loser -> Lower Bracket Round 1, top slot (RED confirmed to display first)
+  '115548681803406291': 'top', // KC vs GX loser -> Lower Bracket Round 1 (NAVI's match), top slot (NAVI confirmed to display first)
+  '115548681803406297': 'top', // VIT vs G2 loser -> Lower Bracket Round 1 (MKOI's match), top slot (MKOI confirmed to display first)
 };
 
 function fetchEliminationBracketData(stageName: string, stage: RawStage): BracketData {
@@ -1546,24 +1646,106 @@ function fetchEliminationBracketData(stageName: string, stage: RawStage): Bracke
   }
 
   const byRound = new Map<number, BracketMatch[]>();
+  // matchById lets us look up a SOURCE match's own teams/results when
+  // deriving a DESTINATION match's correct display order below — e.g.
+  // to find who actually won match X, given only X's id from a
+  // connection table entry.
+  const matchById = new Map(matches.map((m) => [m.id, m]));
+
   for (const match of confirmedMatches) {
-    // The raw team array's own order doesn't always match the official
-    // page's actual visual top/bottom order — confirmed directly: AL's
-    // and BLG's Upper Bracket Semifinals matches show them as the TOP
-    // team on lolesports.com, but the raw data lists them as team[1]
-    // (which this code renders second/bottom by default). Swapping just
-    // for the specific matches where this was actually confirmed wrong,
-    // not assumed to be a general pattern — most matches elsewhere in
-    // this whole project have rendered correctly without any swap.
-    const swap = KNOWN_TEAM_ORDER_SWAPS.has(match.id);
-    const [teamA, teamB] = swap ? [match.teams[1], match.teams[0]] : match.teams;
+    // The raw team array's own order doesn't reliably correspond to a
+    // fixed "team[0] is always top" convention — confirmed directly,
+    // repeatedly, across many matches in this project, in both
+    // directions. Rather than requiring a person to notice and report
+    // this after every single match completes (genuinely impractical
+    // once several regions are live in Playoffs simultaneously), derive
+    // the correct order directly from information already hand-
+    // confirmed for other reasons: KNOWN_MATCH_CONNECTIONS /
+    // KNOWN_LOSER_CONNECTIONS already say which match feeds which slot
+    // of this one, and CONNECTOR_TARGET_OFFSETS already says whether a
+    // WIN-path connection's slot is top or bottom (a genuinely new
+    // LOSER_CONNECTOR_TARGET_OFFSETS table, below, holds the equivalent
+    // for loss-path ones — a single source's winner and loser routinely
+    // need different slots for different destinations, so one shared
+    // table keyed by source id alone couldn't safely serve both). The
+    // real gap being closed here isn't a missing fact so much as a
+    // missing connection between two facts already being tracked
+    // separately for other reasons.
+    //
+    // This works by matching a team's real ID against a derived
+    // expectation, never by reasoning about raw array position — which
+    // is exactly what made the old approach fragile enough to need a
+    // person to re-verify it by eye after every match.
+    const expectedIdBySlot: { top?: string; bottom?: string } = {};
+    for (const [sourceId, destId] of Object.entries(KNOWN_MATCH_CONNECTIONS)) {
+      if (destId !== match.id) continue;
+      const offset = CONNECTOR_TARGET_OFFSETS[sourceId];
+      if (!offset) continue; // no confirmed slot for this connection — can't derive
+      const sourceMatch = matchById.get(sourceId);
+      const winner = sourceMatch?.teams.find((t) => t?.result?.outcome === 'win');
+      if (winner) expectedIdBySlot[offset] = winner.id;
+    }
+    for (const [sourceId, destId] of Object.entries(KNOWN_LOSER_CONNECTIONS)) {
+      if (destId !== match.id) continue;
+      // Loss-path connections need their own offset table — a source
+      // match's winner and loser routinely need different slots for
+      // different destinations (Upper Bracket Finals is the clearest
+      // recurring case), so the shared, win-path CONNECTOR_TARGET_OFFSETS
+      // table can't safely answer this; see LOSER_CONNECTOR_TARGET_OFFSETS'
+      // own comment for why.
+      const offset = LOSER_CONNECTOR_TARGET_OFFSETS[sourceId];
+      if (!offset) continue;
+      const sourceMatch = matchById.get(sourceId);
+      const loser = sourceMatch?.teams.find((t) => t?.result?.outcome === 'loss');
+      if (loser) expectedIdBySlot[offset] = loser.id;
+    }
+
+    const findById = (id: string | undefined) => (id ? match.teams.find((t) => t?.id === id) : undefined);
+    const derivedTeamA = findById(expectedIdBySlot.top);
+    const derivedTeamB = findById(expectedIdBySlot.bottom);
+
+    // Only trust the derivation when it cleanly accounts for this
+    // match's own two real team slots — anything else (a derived id
+    // that doesn't actually match either of this match's own teams,
+    // which would indicate a mistake in the connection tables
+    // themselves, not a real result) falls back to the manual table
+    // rather than risk silently showing a wrong or duplicated team.
+    const derivationIsClean =
+      (derivedTeamA || derivedTeamB) &&
+      (!derivedTeamA || !derivedTeamB || derivedTeamA.id !== derivedTeamB.id) &&
+      [derivedTeamA?.id, derivedTeamB?.id].filter(Boolean).every((id) => match.teams.some((t) => t?.id === id));
+
+    let teamA: RawStandingsMatchTeam | null | undefined;
+    let teamB: RawStandingsMatchTeam | null | undefined;
+    if (derivationIsClean && derivedTeamA && derivedTeamB) {
+      // Both slots derived — fully confirmed by real results, no
+      // fallback needed at all.
+      teamA = derivedTeamA;
+      teamB = derivedTeamB;
+    } else if (derivationIsClean && (derivedTeamA || derivedTeamB)) {
+      // Only one slot derivable (the other's source hasn't completed
+      // yet, or has no confirmed offset) — place the known one
+      // correctly, and let the other side fall back to whichever raw
+      // slot it's actually sitting in (typically still TBD anyway).
+      const known = derivedTeamA ?? derivedTeamB!;
+      const other = match.teams.find((t) => t?.id !== known.id);
+      teamA = derivedTeamA ?? other;
+      teamB = derivedTeamB ?? other;
+    } else {
+      // Nothing derivable for this match (e.g. Round 1, with no
+      // incoming connections at all) — same manual-table fallback as
+      // before, still needed for these genuinely undeterminable cases.
+      const swap = KNOWN_TEAM_ORDER_SWAPS.has(match.id);
+      [teamA, teamB] = swap ? [match.teams[1], match.teams[0]] : match.teams;
+    }
+
     const roundNumber = roundNumberByMatchId.get(match.id)!;
     if (!byRound.has(roundNumber)) byRound.set(roundNumber, []);
     byRound.get(roundNumber)!.push({
       matchId: match.id,
       state: match.state,
-      teamA: toBracketTeam(teamA),
-      teamB: toBracketTeam(teamB),
+      teamA: toBracketTeam(teamA ?? null),
+      teamB: toBracketTeam(teamB ?? null),
       scoreA: teamA?.result?.gameWins ?? 0,
       scoreB: teamB?.result?.gameWins ?? 0,
       feedsInto: KNOWN_MATCH_CONNECTIONS[match.id],

@@ -1,13 +1,20 @@
 import type { Region } from '../types/team';
 
 export interface WorldsQualifiedTeam {
-  /** Matches a key in teams.json's teams object. */
-  teamId: string;
+  /** Matches a key in teams.json's teams object — null means this seed
+   * position is confirmed to exist, but which specific team will
+   * occupy it isn't determined yet (genuinely different from a known
+   * team whose seed number isn't final — see the seed field's own
+   * comment for that case instead). */
+  teamId: string | null;
   /** 1-indexed seed within the region, confirmed once the region's own
    * Playoffs bracket determines final placement — null means the team
    * has qualified but its seed relative to its own region isn't final
-   * yet (e.g. LCK's DK is confirmed 4th seed, but T1/GenG/HLE's 1st
-   * through 3rd order is still being decided by their own bracket). */
+   * yet. Both this and teamId can be independently known or unknown:
+   * a team can be confirmed with its seed still open (this was LCK's
+   * own state before its Regional Championship finished), or a seed
+   * position can be confirmed to exist with no team assigned to it yet
+   * (LPL's remaining two slots, still undetermined). */
   seed: number | null;
 }
 
@@ -24,44 +31,62 @@ export interface WorldsRegionQualifiers {
  * transcribed directly from the official Worlds overview page
  * (https://lolesports.com/en-US/tournament/115660540725177488/overview)
  * plus direct region-specific confirmation, and updated by hand as more
- * regions lock in their own Playoffs. Last confirmed 2026-09-08.
+ * regions lock in their own Playoffs. Last confirmed 2026-09-09.
  *
  * Order is deliberate — LCS, LEC, LCK, LPL, CBLOL, LCP — matching
  * REGIONS in teamsStore.ts and every region list elsewhere in the app,
  * not the qualification order teams actually locked in.
  */
 export const WORLDS_QUALIFIERS: WorldsRegionQualifiers[] = [
-  // LCS — no teams confirmed yet.
+  // LCS — no teams confirmed yet. All 3 of LCS's Worlds slots will be
+  // determined directly by its own Playoffs bracket (currently
+  // underway), not a separate qualifier event.
   { region: 'LCS', teams: [] },
-  // LEC — KC and G2 confirmed qualified (official Worlds overview page),
-  // seed order not yet determined.
+  // LEC — KC and G2 confirmed qualified (official Worlds overview
+  // page), seed order not yet determined. LEC sends 3 teams total to
+  // Worlds — the third slot, like the seed order for these first two,
+  // will be determined directly by LEC's own Playoffs bracket
+  // (currently underway).
   {
     region: 'LEC',
     teams: [
       { teamId: 'kc', seed: null },
       { teamId: 'g2', seed: null },
+      { teamId: null, seed: null },
     ],
   },
-  // LCK — all 4 semifinalists confirmed qualified (T1, GenG, HLE, DK).
-  // DK's 4th seed is directly confirmed (lost Lower Bracket Round 3 to
-  // T1 in the Regional Championship); the other three's 1st-3rd order
-  // is still being decided by that same bracket.
+  // LCK — fully locked, confirmed directly: GenG 1st, HLE 2nd, T1 3rd,
+  // DK 4th (DK's own 4th seed was confirmed earlier, before the
+  // Regional Championship had fully finished; the other three's order
+  // is now settled too).
   {
     region: 'LCK',
     teams: [
-      { teamId: 't1', seed: null },
-      { teamId: 'geng', seed: null },
-      { teamId: 'hle', seed: null },
+      { teamId: 'geng', seed: 1 },
+      { teamId: 'hle', seed: 2 },
+      { teamId: 't1', seed: 3 },
       { teamId: 'dk', seed: 4 },
     ],
   },
-  // LPL — BLG confirmed qualified (won Upper Bracket Finals in Playoffs),
-  // remaining slots not yet determined.
+  // LPL — AL 1st, BLG 2nd confirmed directly (AL won the overall
+  // Playoffs Finals, BLG runner-up) — these two are fully locked,
+  // LPL's own Playoffs bracket is done. The remaining two seed
+  // positions are confirmed to exist, but which teams will occupy them
+  // is being decided by a genuinely separate event — LPL's own
+  // "Regional Qualifier" bracket, not a continuation of the Playoffs
+  // bracket already built in this project.
   {
     region: 'LPL',
-    teams: [{ teamId: 'blg', seed: null }],
+    teams: [
+      { teamId: 'al', seed: 1 },
+      { teamId: 'blg', seed: 2 },
+      { teamId: null, seed: 3 },
+      { teamId: null, seed: 4 },
+    ],
   },
-  // CBLOL — no teams confirmed yet.
+  // CBLOL — no teams confirmed yet. All 3 of CBLOL's Worlds slots will
+  // be determined directly by its own Playoffs bracket (currently
+  // underway), not a separate qualifier event.
   { region: 'CBLOL', teams: [] },
   // LCP — fully locked: Secret Whales (TSW) 1st, CFO 2nd, MVK 3rd.
   {

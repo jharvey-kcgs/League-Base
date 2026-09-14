@@ -17,9 +17,9 @@ export function WorldsTeams({ onSelectTeam }: { onSelectTeam: (teamId: string) =
       {WORLDS_QUALIFIERS.map((group) => {
         // Region is already the abbreviation ('LCS', 'LEC', etc.) — no
         // need for the full display name here, per explicit request.
-        // Seeded teams first, in seed order; unseeded teams after, in
-        // whatever order they're listed — their own seed isn't known
-        // yet, so there's no meaningful sort within that subset.
+        // Seeded entries first, in seed order; unseeded ones after, in
+        // whatever order they're listed — nothing to meaningfully sort
+        // within that subset since none of them have a seed yet.
         const sorted = [...group.teams].sort((a, b) => {
           if (a.seed !== null && b.seed !== null) return a.seed - b.seed;
           if (a.seed !== null) return -1;
@@ -40,10 +40,14 @@ export function WorldsTeams({ onSelectTeam }: { onSelectTeam: (teamId: string) =
                 <View style={[styles.table, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                   {sorted.map((qualifier, i) => (
                     <QualifierRow
-                      key={qualifier.teamId}
+                      // teamId can be null (seed position confirmed, team
+                      // not yet determined) — seed itself is always a
+                      // stable, unique value within a region's own list
+                      // here, unlike teamId, so it's the safer key.
+                      key={qualifier.seed ?? `unseeded-${qualifier.teamId}`}
                       qualifier={qualifier}
                       isLast={i === sorted.length - 1}
-                      onPress={() => onSelectTeam(qualifier.teamId)}
+                      onPress={qualifier.teamId ? () => onSelectTeam(qualifier.teamId!) : undefined}
                     />
                   ))}
                 </View>
@@ -68,9 +72,25 @@ function QualifierRow({
 }: {
   qualifier: WorldsQualifiedTeam;
   isLast: boolean;
-  onPress: () => void;
+  onPress?: () => void;
 }) {
   const { colors } = useTheme();
+
+  // A confirmed seed position with no team assigned yet (e.g. LPL's
+  // remaining two Worlds slots) — same visual rhythm as a normal row,
+  // but no logo, no team name, and not tappable, since there's nothing
+  // real to show or navigate to yet.
+  if (!qualifier.teamId) {
+    return (
+      <View style={[styles.row, !isLast && { borderBottomWidth: 1, borderBottomColor: colors.border }]}>
+        <AppText weight="bold" style={[styles.seed, { color: colors.textMuted }]}>
+          {qualifier.seed !== null ? `#${qualifier.seed}` : '—'}
+        </AppText>
+        <AppText style={[styles.teamName, { color: colors.textMuted }]}>TBD</AppText>
+      </View>
+    );
+  }
+
   const team = getTeam(qualifier.teamId);
   // Shouldn't happen — every teamId here should match a real teams.json
   // entry — but a data typo silently disappearing a row is worse than a
