@@ -1117,6 +1117,16 @@ const KNOWN_MATCH_CONNECTIONS: Record<string, string> = {
   '115565004607949417': '115565004607949423', // Lower Bracket Semifinals winner -> Lower Bracket Finals, bottom slot
   '115565004607949405': '115565004607949429', // Upper Bracket Finals winner -> Finals, top slot
   '115565004607949423': '115565004607949429', // Lower Bracket Finals winner -> Finals, bottom slot
+  // LPL Regional Qualifier (2026) — a genuinely different structure from
+  // every other bracket built so far: this stage exists specifically to
+  // fill LPL's remaining #3/#4 Worlds seeds directly, not to feed a
+  // later stage within this same bracket. TES vs IG's winner becomes
+  // Worlds seed #3 immediately — there's no further match for it to
+  // advance to, so it has no win-path connection at all (same pattern
+  // as LCK's Play-Ins Round 1, whose winner also skipped directly to
+  // Playoffs outside that bracket's own match graph). Only WE vs JDG's
+  // winner actually advances within this bracket, to Round 2.
+  '116957100120526830': '116957100120526836', // WE vs JDG winner -> Round 2, bottom slot
 };
 
 /** Same discipline as KNOWN_MATCH_CONNECTIONS above, but for the LOSER's
@@ -1211,6 +1221,11 @@ const KNOWN_LOSER_CONNECTIONS: Record<string, string> = {
   '115565004607949375': '115565004607949399', // C9 vs SR loser -> Lower Bracket Round 1
   '115565004607949381': '115565004607949399', // FLY vs SEN loser -> Lower Bracket Round 1
   '115565004607949405': '115565004607949423', // Upper Bracket Finals loser -> Lower Bracket Finals, top slot
+  // LPL Regional Qualifier — TES vs IG's loser deposits into Round 2's
+  // top slot (WE vs JDG's winner takes the bottom slot via win-path
+  // above). WE vs JDG's own loser has no entry here at all — explicitly
+  // confirmed eliminated outright, not deposited anywhere.
+  '116957100120526824': '116957100120526836', // TES vs IG loser -> Round 2, top slot
 };
 
 /** Explicit, directly-confirmed stage name for a specific matchId — same
@@ -1466,6 +1481,8 @@ const CONNECTOR_TARGET_OFFSETS: Record<string, 'top' | 'bottom'> = {
   '115565004607949417': 'bottom', // Lower Bracket Semifinals -> Lower Bracket Finals, bottom slot
   '115565004607949405': 'top', // Upper Bracket Finals -> Finals, top slot
   '115565004607949423': 'bottom', // Lower Bracket Finals -> Finals, bottom slot
+  // LPL Regional Qualifier
+  '116957100120526830': 'bottom', // WE vs JDG -> Round 2, bottom slot
 };
 
 /** Same shape as CONNECTOR_TARGET_OFFSETS above, but for a match's LOSS
@@ -1507,6 +1524,8 @@ const LOSER_CONNECTOR_TARGET_OFFSETS: Record<string, 'top' | 'bottom'> = {
   '115565671526468623': 'top', // Upper Bracket Finals loser -> Lower Bracket Finals (sibling: 635->641 is 'bottom')
   // LCS
   '115565004607949405': 'top', // Upper Bracket Finals loser -> Lower Bracket Finals (sibling: 417->423 is 'bottom')
+  // LPL Regional Qualifier
+  '116957100120526824': 'top', // TES vs IG loser -> Round 2, top slot (sibling: 526830->526836 is 'bottom')
   // The five entries below are converted from what was previously a
   // manual KNOWN_TEAM_ORDER_SWAPS entry, not derived from a sibling —
   // each was already directly confirmed by the user at the time (e.g.
