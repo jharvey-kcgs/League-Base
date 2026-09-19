@@ -68,20 +68,18 @@ export const WORLDS_QUALIFIERS: WorldsRegionQualifiers[] = [
       { teamId: 'dk', seed: 4 },
     ],
   },
-  // LPL — AL 1st, BLG 2nd confirmed directly (AL won the overall
-  // Playoffs Finals, BLG runner-up) — these two are fully locked,
-  // LPL's own Playoffs bracket is done. The remaining two seed
-  // positions are confirmed to exist, but which teams will occupy them
-  // is being decided by a genuinely separate event — LPL's own
-  // "Regional Qualifier" bracket, not a continuation of the Playoffs
-  // bracket already built in this project.
+  // LPL — fully locked: AL 1st, BLG 2nd (from Playoffs — AL won the
+  // overall Finals, BLG runner-up), TES 3rd and IG 4th (from the
+  // separate "Regional Qualifier" bracket built to fill these last two
+  // seeds — TES won Round 1 outright for #3, and IG, having dropped to
+  // Round 2 as Round 1's loser, won that to claim #4).
   {
     region: 'LPL',
     teams: [
       { teamId: 'al', seed: 1 },
       { teamId: 'blg', seed: 2 },
-      { teamId: null, seed: 3 },
-      { teamId: null, seed: 4 },
+      { teamId: 'tes', seed: 3 },
+      { teamId: 'ig', seed: 4 },
     ],
   },
   // CBLOL — no teams confirmed yet. All 3 of CBLOL's Worlds slots will
