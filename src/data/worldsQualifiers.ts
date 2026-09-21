@@ -42,17 +42,14 @@ export const WORLDS_QUALIFIERS: WorldsRegionQualifiers[] = [
   // determined directly by its own Playoffs bracket (currently
   // underway), not a separate qualifier event.
   { region: 'LCS', teams: [] },
-  // LEC — KC and G2 confirmed qualified (official Worlds overview
-  // page), seed order not yet determined. LEC sends 3 teams total to
-  // Worlds — the third slot, like the seed order for these first two,
-  // will be determined directly by LEC's own Playoffs bracket
-  // (currently underway).
+  // LEC — fully locked, confirmed directly: G2 1st, MKOI 2nd, KC 3rd,
+  // all determined by LEC's own Playoffs bracket.
   {
     region: 'LEC',
     teams: [
-      { teamId: 'kc', seed: null },
-      { teamId: 'g2', seed: null },
-      { teamId: null, seed: null },
+      { teamId: 'g2', seed: 1 },
+      { teamId: 'mkoi', seed: 2 },
+      { teamId: 'kc', seed: 3 },
     ],
   },
   // LCK — fully locked, confirmed directly: GenG 1st, HLE 2nd, T1 3rd,
