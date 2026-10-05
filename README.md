@@ -36,11 +36,13 @@ project depends on, and nothing it collects or transmits about you.
   (see [Color accessibility](#9-color-accessibility))
 - Real standings, schedules, rosters, and VODs for all 6 regions, sourced
   live from lolesports.com's own public data
-- A genuine Swiss-format bracket view for LCP, and real elimination
-  (Play-Ins/Playoffs) brackets for LCK, LPL, and LEC — hand-confirmed
+- Real Swiss and elimination brackets (Play-Ins, Playoffs, and LPL's
+  Regional Qualifier) across all six regions — hand-confirmed
   connection data for each, since the raw API carries no structural
   bracket information at all (see
   [The Bracket system](#8-the-bracket-system))
+- A Worlds screen listing each region's qualified teams in seed order
+  (see [The Worlds screen](#the-worlds-screen))
 - 58 teams' worth of roster data, carefully researched and cross-verified
   against real sources — not guessed (see [Team data](#7-team-data-teamsjson))
 - A crash-safety net (see [Section 11](#11-testflight-release-readiness)) so an
@@ -186,6 +188,10 @@ src/
                                      data
     TeamScreen.tsx                  Any team's overview — same TeamOverview
                                      HomeScreen uses, reached via RegionStack
+    WorldsScreen.tsx                World News (official LoL Esports
+                                      socials), Upcoming/Recent Games
+                                      (empty until Worlds matches exist),
+                                      and Teams grouped by region
     SettingsScreen.tsx              Nested menu: Profile, Theme, About, FAQ
     ProfileSettingsScreen.tsx       Re-run the team picker to change favorite
     ThemeSettingsScreen.tsx         Light / dark / match-device
@@ -235,6 +241,10 @@ src/
                                        RegionHomeScreen)
     RecentGames.tsx                   Region's last 5 completed matches,
                                        same shared-fetch pattern
+    WorldsTeams.tsx                   Worlds Teams section — regions in
+                                        fixed order, teams by seed, a TBD row
+                                        for a seed with no team yet; reads
+                                        worldsQualifiers.ts
     OverallStandings.tsx              Region standings table, including a
                                        lock icon once a Swiss-stage team
                                        hits the confirmed qualify
@@ -277,6 +287,9 @@ src/
                                       id/region
     favoriteTeam.ts                  AsyncStorage: favoriteTeamId + theme
                                       mode preference
+    worldsQualifiers.ts              Hand-maintained Worlds qualifier list:
+                                       per region, each team's id and seed
+                                       (either can be unknown independently)
 
   api/
     lolesportsClient.ts               lolesports.com unofficial API —
@@ -512,9 +525,10 @@ title with an empty or wrong body underneath it.
 
 ### Elimination brackets (Play-Ins, Playoffs) — `fetchEliminationBracketData`
 
-Built and currently live for **LCK, LPL, and LEC's Play-Ins and/or
-Playoffs stages** (CBLOL's Playoffs bracket is on hold until its own
-teams are finalized). This was a genuinely harder problem than Swiss,
+Built and live for the Play-Ins and/or Playoffs stages of **every
+region** — LCS, LEC, LCK, LPL, CBLOL, and LCP — plus LPL's separate
+Regional Qualifier, the small bracket that filled its last two Worlds
+seeds. This was a genuinely harder problem than Swiss,
 worth documenting properly given how many real corrections it took to
 get right — future-you (or anyone else building the next region's
 bracket) should read this before assuming a new one will "just work."
@@ -532,7 +546,7 @@ itself falls out of a mathematical property (record-grouping); here,
 the *shape itself* is unknowable from data and has to be told to the
 code by a person who looked at the real page.
 
-**The seven lookup tables that make this work, all in
+**The eight lookup tables that make this work, all in
 `lolesportsClient.ts`, all keyed by raw match ID:**
 
 | Table | What it encodes |
@@ -542,8 +556,36 @@ code by a person who looked at the real page.
 | `KNOWN_ROUND_LABELS` | The real, confirmed stage name for a match (e.g. `"Upper Bracket Semifinals"`) — overrides the generic `"ROUND N"` fallback. Needed whenever two differently-named stages land in the same computed column and would otherwise be visually indistinguishable. |
 | `KNOWN_COLUMN_OVERRIDES` | Explicitly forces a match into a specific column, overriding the automatic "1 + max(source columns)" computation. Needed when the real bracket deliberately delays a stage further right than its data dependency alone implies (LCK's Upper Bracket Finals, held back so the Lower Bracket visually "catches up" first — LPL and LEC's shapes both resolved correctly with zero overrides, so don't assume every region needs one). |
 | `SUPPRESSED_CONNECTOR_LINES` | A win-path connection that's real (used for round placement and centering) but the official page draws no line for it anyway. First needed for LCK's Round 1 -> Upper Bracket Round 2, which genuinely has no line on the real page despite the winner clearly advancing. |
-| `CONNECTOR_TARGET_OFFSETS` | Makes a connector line land on a destination's specific top or bottom team slot instead of its vertical center — needed whenever a destination match has one "deposited" slot (arriving with no line) and one slot that genuinely advances via this specific line. |
-| `KNOWN_TEAM_ORDER_SWAPS` | The raw team array's `[0]`/`[1]` order doesn't always match the official page's actual visual top/bottom order — this set swaps a specific match's rendering order in that case. Confirmed real, not a hypothetical: happened for LPL's AL/BLG and NIP/IG matches and LCK's Upper Bracket Finals, all independently. |
+| `CONNECTOR_TARGET_OFFSETS` | For a **win-path** connection: which slot of the destination (top or bottom) the winner lands in. Makes the connector line land on that slot instead of the card's vertical center, and — see below — is also what lets team order be derived automatically. |
+| `LOSER_CONNECTOR_TARGET_OFFSETS` | The same thing for a match's **loss-path** connection. Needs its own table, not a shared one: a single match's winner and loser routinely go to different slots of different destinations (an Upper Bracket Finals winner takes the top slot of Finals while its loser takes the top slot of Lower Bracket Finals), so one value per source id can't hold both. A loss slot is usually derived as "the opposite of whichever slot the other, win-path source of that same destination takes"; where there's no such sibling, it has to be confirmed directly. |
+| `KNOWN_TEAM_ORDER_SWAPS` | Last-resort manual override for team order, for matches the automatic derivation below can't place at all. Used to hold 20+ entries, each requiring someone to spot a wrong order on the real site and report it; it now holds two (both CBLOL Round 1 matches). |
+
+**Team order inside a match is derived, not hand-swapped.** The raw team
+array's `[0]`/`[1]` order does not reliably match the official page's
+top/bottom order — confirmed repeatedly, in both directions. For most of
+this project that was patched one match at a time, which doesn't scale
+once several regions are live at once. Now `fetchEliminationBracketData`
+places each team by where it came from: for every connection feeding a
+match, it finds who actually won (win-path) or lost (loss-path) the
+source match and puts that team in the slot the offset tables say the
+connection feeds. If only one slot can be derived, the other team takes
+the remaining slot by elimination — this is how a bye team (seeded
+straight into a later round, with no incoming connection of its own)
+lands in the right place. It matches teams by real ID, never by raw array
+position.
+
+What this needs from whoever builds the next bracket: an offset for every
+win-path connection, and for every loss-path connection whose destination
+has a win-path source to take the other slot. What it can't derive:
+Round 1 matches (nothing feeds them), and a match fed *only* by loss-path
+connections with no confirmed offset (e.g. a Lower Bracket Round 1 where
+both teams just dropped from Round 1). Those fall back to raw order, then
+to `KNOWN_TEAM_ORDER_SWAPS`. Several such matches (LCS's Lower Bracket
+Round 1, LCK's Lower Bracket Round 1, LCP's Upper Bracket Semifinals)
+were checked against the real page and looked correct in raw order
+without an entry — worth re-checking whenever a new bracket goes live,
+since that's the raw order happening to be right, not something the
+code guarantees.
 
 **Column placement is otherwise fully automatic**, via a fixed-point
 loop: a match with no confirmed predecessor starts at column 1; anything
@@ -612,10 +654,50 @@ region's bracket, not just skimming:**
   unconfirmed inference in the tables above is commented as such
   in-place, not left to look more certain than it is.
 
-**Also relevant for a future Worlds screen** (discussed, not started) —
-Worlds' own bracket shape would need the exact same "get a real
-diagnostic log, confirm the raw match IDs directly, don't guess"
-treatment as every region here, from scratch.
+### The Worlds screen
+
+A Drawer entry between **My Team** and the region list, always visible —
+deliberately no season-gating logic; a quiet, mostly empty screen in the
+off-season was judged a smaller problem than someone not finding it.
+Sections:
+
+- **World News** — outbound links to the official LoL Esports accounts on
+  X, YouTube, Twitch, and Instagram (`FollowButton`, the same pattern as
+  Region News). The handles came from official sources, not guesses —
+  worth a tap-through of all four before release, since a dead link
+  here would be visible.
+- **Upcoming / Recent Games** — currently fed an empty events array on
+  purpose. No Worlds schedule fetch exists yet because there were no real
+  Worlds matches to build or verify one against; each component's own
+  empty-state message is accurate as-is, and only the data source feeding
+  them needs to change later.
+- **Teams** — each region's qualified teams, regions in fixed order (LCS,
+  LEC, LCK, LPL, CBLOL, LCP), teams by seed. Tapping a team opens its page.
+
+**The Teams data is hand-maintained, not live.** An earlier version of
+this roadmap assumed it could be read from the tournament data. It can't:
+the API doesn't expose a clean per-region qualifier list, so
+`src/data/worldsQualifiers.ts` is transcribed from lolesports.com's
+official Worlds overview page plus confirmed regional results, and has to
+be edited whenever a region's seeds change. Each entry has two fields
+that can be unknown **independently**: `teamId` (null = the slot exists
+but no team has earned it) and `seed` (null = the team has qualified but
+its final seed isn't settled). That distinction is real — LCK was once
+"four known teams, order unsettled," and LPL was once "two known teams,
+two empty slots" — and the component renders them differently (a dash
+instead of a number, versus a "TBD" row). A region with nothing confirmed
+shows a "Determined by [Region] Playoffs" placeholder.
+
+Status as of 2026-10-05: LCS, LEC, LCK, LPL, and LCP are fully seeded;
+CBLOL's LOS and FUR are confirmed but unordered until its Finals.
+
+**Format, so nobody assumes otherwise:** Worlds 2026 is a Play-In (4
+teams, double-elimination, best-of-five) → Swiss stage (16 teams, five
+rounds, three wins to advance) → Knockout (8 teams, single-elimination).
+It is *not* a group stage. The Play-In and Knockout will follow the
+exact process above (real diagnostic log, hand-confirmed IDs and slots,
+never a guess); the Swiss stage should be able to reuse the existing
+Swiss renderer, but that's unverified until real Worlds data exists.
 
 ---
 
@@ -1007,21 +1089,11 @@ category but no longer literally nothing.)
 
 ## 12. Roadmap (genuinely open, not yet built)
 
-- **CBLOL's Playoffs bracket** — the same elimination-bracket system
-  built for LCK, LPL, and LEC (see
-  [The Bracket system](#8-the-bracket-system)) hasn't been built for
-  CBLOL yet, on hold specifically until its own Playoffs teams are
-  finalized — not a technical gap, the same "don't build against a
-  guess" reasoning as everything else here.
-- **A Worlds EventScreen** — its own Drawer entry (not shoehorned into the
-  per-region navigation, since Worlds spans all 6 regions at once):
-  Upcoming/Recent Games, a Bracket section (table format during
-  Play-Ins/groups, a real connected bracket for Knockout), and a
-  region-grouped list of qualified teams read live from the real
-  tournament data once it exists (not hardcoded slot counts, which change
-  year to year based on MSI performance). Deferred until Worlds actually
-  appears in lolesports.com's live data — same reasoning as waiting for
-  LCP's real bracket data before building against it.
+- **Worlds — the stages themselves.** The Worlds screen's Teams section
+  is built (see [The Worlds screen](#the-worlds-screen)); not built: the
+  Play-In bracket, the Swiss stage, the Knockout bracket, and real
+  Upcoming/Recent Games. All of them are waiting on real Worlds match
+  data to build against — same reasoning as every region's bracket.
 - **LPL's VOD gap has a possible community-sourced fallback**
   (Leaguepedia's Cargo API), genuinely built and confirmed working — but
   parked (`src/api/leaguepediaClient.ts`, not deleted) after its rate

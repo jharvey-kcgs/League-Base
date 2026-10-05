@@ -1,6 +1,6 @@
 # Privacy Policy for League Base
 
-**Last updated: [September 2026]**
+**Last updated: September 2026**
 
 This is a starting draft, not a document reviewed by a lawyer — accurate
 to how the app actually works today, but worth a second look before

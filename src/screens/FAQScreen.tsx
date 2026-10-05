@@ -34,7 +34,11 @@ const FAQS: Array<{ q: string; a: string }> = [
   },
   {
     q: "What's the Bracket section on a region's page?",
-    a: 'Two different things can show up here, depending on what stage a region is actually in. During a Swiss-format stage (LCP\u2019s current format), teams get paired each round against others with the same win-loss record instead of a fixed weekly schedule \u2014 the Bracket section shows those real pairings round by round, plus a lock icon for teams that have already secured a Playoffs spot. During a Play-Ins or Playoffs stage (LCK, LPL, and LEC currently), it shows a real connected bracket \u2014 who\u2019s playing whom, and where the winner or loser of each match goes next. Either way, this section only appears while a region is actually in one of these formats \u2014 most of the time, Overall Standings above it is the one that matters.',
+    a: 'Two different things can show up here, depending on what stage a region is in. During a Swiss-format stage (LCP uses one before its Playoffs, for example), teams get paired each round against others with the same win-loss record instead of a fixed weekly schedule \u2014 the Bracket section shows those real pairings round by round, plus a lock icon for teams that have already secured a Playoffs spot. During a Play-Ins or Playoffs stage, it shows a real connected bracket \u2014 who\u2019s playing whom, and where the winner or loser of each match goes next. This section only shows up for a region that\u2019s in (or just finished) one of these formats \u2014 during a regular season it isn\u2019t there, and Overall Standings above it is the one that matters.',
+  },
+  {
+    q: 'How are teams ordered on the Worlds screen?',
+    a: 'Regions are listed in a fixed order \u2014 LCS, LEC, LCK, LPL, CBLOL, LCP \u2014 and within each region, teams are numbered by seed (#1 is the region\u2019s top seed, normally its Playoffs winner). A dash instead of a number means a team has qualified but its final seed isn\u2019t settled yet, and TBD means a slot exists that no team has earned yet. This list is updated by hand from lolesports.com\u2019s official Worlds page and each region\u2019s results rather than pulled automatically, so it can trail a real result slightly. Worlds schedules and brackets appear once the tournament\u2019s matches are available.',
   },
 ];
 

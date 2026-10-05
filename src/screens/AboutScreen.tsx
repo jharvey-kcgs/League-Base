@@ -10,7 +10,8 @@ const SECTIONS: Array<{ heading: string; body: string }> = [
     body:
       'League Base is a personal companion app for LCS, LEC, LCK, LPL, CBLOL, and LCP — ' +
       'your favorite team on the home screen, and every other team browsable ' +
-      'by region.',
+      'by region. A Worlds section covers the international event, with the ' +
+      'qualified teams listed by region.',
   },
   {
     heading: 'Where the data comes from',
@@ -19,7 +20,9 @@ const SECTIONS: Array<{ heading: string; body: string }> = [
       'match schedules, results, standings, and VODs come from lolesports.com\u2019s ' +
       'own public data \u2014 free, no account needed. Coverage varies a little by ' +
       'region (see the FAQ for LPL\u2019s VOD situation specifically, and how the ' +
-      'Bracket section works during Swiss, Play-Ins, or Playoffs).',
+      'Bracket section works during Swiss, Play-Ins, or Playoffs). The Worlds ' +
+      'qualified-teams list is maintained by hand from lolesports.com\u2019s official ' +
+      'Worlds page and updated as each region finishes.',
   },
   {
     heading: 'No account, no server',
