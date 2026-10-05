@@ -38,10 +38,17 @@ export interface WorldsRegionQualifiers {
  * not the qualification order teams actually locked in.
  */
 export const WORLDS_QUALIFIERS: WorldsRegionQualifiers[] = [
-  // LCS — no teams confirmed yet. All 3 of LCS's Worlds slots will be
-  // determined directly by its own Playoffs bracket (currently
-  // underway), not a separate qualifier event.
-  { region: 'LCS', teams: [] },
+  // LCS — fully locked, confirmed directly: Team Liquid Alienware (TLAW)
+  // 1st, LYON 2nd, Cloud9 3rd, all determined by LCS's own Playoffs
+  // bracket. TLAW is the `tl` entry in teams.json.
+  {
+    region: 'LCS',
+    teams: [
+      { teamId: 'tl', seed: 1 },
+      { teamId: 'lyon', seed: 2 },
+      { teamId: 'c9', seed: 3 },
+    ],
+  },
   // LEC — fully locked, confirmed directly: G2 1st, MKOI 2nd, KC 3rd,
   // all determined by LEC's own Playoffs bracket.
   {
@@ -79,10 +86,18 @@ export const WORLDS_QUALIFIERS: WorldsRegionQualifiers[] = [
       { teamId: 'ig', seed: 4 },
     ],
   },
-  // CBLOL — no teams confirmed yet. All 3 of CBLOL's Worlds slots will
-  // be determined directly by its own Playoffs bracket (currently
-  // underway), not a separate qualifier event.
-  { region: 'CBLOL', teams: [] },
+  // CBLOL — sends 2 teams to Worlds (earlier versions of this file said
+  // 3, which was wrong). LOS and FUR are confirmed qualified; which one
+  // is 1st vs 2nd depends on the CBLOL Finals, which hasn't been played
+  // yet, so both seeds are still null. Listing order here is not a
+  // ranking.
+  {
+    region: 'CBLOL',
+    teams: [
+      { teamId: 'los', seed: null },
+      { teamId: 'fur', seed: null },
+    ],
+  },
   // LCP — fully locked: Secret Whales (TSW) 1st, CFO 2nd, MVK 3rd.
   {
     region: 'LCP',
