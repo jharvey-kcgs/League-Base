@@ -87,15 +87,13 @@ export const WORLDS_QUALIFIERS: WorldsRegionQualifiers[] = [
     ],
   },
   // CBLOL — sends 2 teams to Worlds (earlier versions of this file said
-  // 3, which was wrong). LOS and FUR are confirmed qualified; which one
-  // is 1st vs 2nd depends on the CBLOL Finals, which hasn't been played
-  // yet, so both seeds are still null. Listing order here is not a
-  // ranking.
+  // 3, which was wrong). CBLOL Finals are complete: LOS beat FUR 3-2, so
+  // LOS is the #1 seed and FUR is #2.
   {
     region: 'CBLOL',
     teams: [
-      { teamId: 'los', seed: null },
-      { teamId: 'fur', seed: null },
+      { teamId: 'los', seed: 1 },
+      { teamId: 'fur', seed: 2 },
     ],
   },
   // LCP — fully locked: Secret Whales (TSW) 1st, CFO 2nd, MVK 3rd.

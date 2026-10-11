@@ -8,6 +8,9 @@ import { FollowButton } from '../components/FollowButton';
 import { UpcomingGames } from '../components/UpcomingGames';
 import { RecentGames } from '../components/RecentGames';
 import { WorldsTeams } from '../components/WorldsTeams';
+import { WorldsBracketRounds } from '../components/BracketRounds';
+import { useAsyncData } from '../hooks/useAsyncData';
+import { fetchScheduleForWorlds } from '../api/lolesportsClient';
 import type { WorldsScreenProps } from '../navigation/types';
 
 /** Official LoL Esports socials — not any one region's, since this screen
@@ -26,6 +29,13 @@ const WORLDS_SOCIALS: Array<{ label: string; url: string }> = [
 
 export function WorldsScreen({ navigation }: WorldsScreenProps) {
   const { colors } = useTheme();
+  // One shared fetch for both sections below — RecentGames and
+  // UpcomingGames each filter the same full event list down to their own
+  // half internally (completed vs unstarted/inProgress), exactly the way
+  // every region's own screen already feeds both from one list, so there's
+  // no need to split this into two separate fetches or two separate
+  // useAsyncData calls.
+  const { status, data: scheduleEvents } = useAsyncData(() => fetchScheduleForWorlds(), []);
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
@@ -44,21 +54,20 @@ export function WorldsScreen({ navigation }: WorldsScreenProps) {
           </View>
         </Section>
 
-        {/* Play-In doesn't start until mid-October — no real schedule data
-         * exists yet to fetch. status="ready" with an empty events array
-         * (rather than "loading" forever, or a custom one-off message) is
-         * deliberate: it's honest (there genuinely are zero upcoming/recent
-         * matches right now) and reuses each component's own already-
-         * correct empty-state messaging, so nothing here needs to change
-         * once a real fetchScheduleForWorlds()-style function exists later
-         * — only the status/events source feeding these two would. */}
         <Section title="Upcoming games">
-          <UpcomingGames status="ready" events={[]} />
+          <UpcomingGames status={status} events={scheduleEvents} />
         </Section>
 
         <Section title="Recent games">
-          <RecentGames status="ready" events={[]} />
+          <RecentGames status={status} events={scheduleEvents} />
         </Section>
+
+        {/* Fires the same fetchActiveStage diagnostic log every other
+         * region's bracket was built from, now pointed at Worlds' own
+         * tournament ID — see WorldsBracketRounds' own comment. Renders
+         * nothing until a stage with real, non-TBD matches comes back, so
+         * this is silent until Play-In actually has real data to show. */}
+        <WorldsBracketRounds />
 
         <Section title="Teams">
           <WorldsTeams onSelectTeam={(teamId) => navigation.navigate('TeamDetail', { teamId })} />

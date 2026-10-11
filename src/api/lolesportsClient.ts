@@ -169,6 +169,35 @@ export async function fetchScheduleForRegion(region: Region): Promise<ScheduleEv
   return fetchSchedule(leagueId);
 }
 
+/** Worlds' own counterpart to resolveLeagueId above — Worlds isn't a
+ * Region, so it can't go through lolesportsSlugForRegion, but it does
+ * have its own entry in the live getLeagues list (confirmed by every
+ * other region's own league existing there the same way), matched here
+ * by slug directly rather than hardcoding an ID the same unverified way
+ * WORLDS_TOURNAMENT_ID below had to be (that one came from the overview
+ * page's own URL; this one doesn't need to, since getLeagues is exactly
+ * the live, self-correcting lookup resolveLeagueId already trusts for
+ * every region). */
+async function resolveWorldsLeagueId(): Promise<string | null> {
+  const leagues = await fetchLeagues();
+  const match = leagues.find((l) => l.slug.toLowerCase() === 'worlds');
+
+  if (!match && __DEV__) {
+    console.log('[resolveWorldsLeagueId] no match for "worlds" — available leagues:', JSON.stringify(leagues, null, 2));
+  }
+
+  return match?.id ?? null;
+}
+
+/** Mirrors fetchScheduleForRegion above, but for Worlds. Same "return []
+ * rather than throw" convention, so Upcoming/Recent Games degrade the
+ * same honest way every region's own empty state already does. */
+export async function fetchScheduleForWorlds(): Promise<ScheduleEvent[]> {
+  const leagueId = await resolveWorldsLeagueId();
+  if (!leagueId) return [];
+  return fetchSchedule(leagueId);
+}
+
 // --- Live games (across all leagues — filter client-side by league slug) ---
 
 /** Confirmed via real, currently-indexed lolesports.com pages (not a
@@ -737,27 +766,29 @@ async function fetchActiveStage(tournamentId: string): Promise<RawStage | null> 
     throw err;
   }
 
-  // TEMPORARY — LCP Playoffs has real Round 1 matches now (MVK vs CFO,
-  // GAM vs TSW), but this is a genuine double-elimination bracket, not a
-  // simple single-elimination one like Play-Ins was: each Round 1 match
-  // has TWO different destinations depending on who wins (winner ->
-  // Upper Bracket Finals, loser -> Upper Bracket Semifinals), and there
-  // are four separate downstream stages (Upper Bracket Finals, Upper
-  // Bracket Semifinals, Lower Bracket Finals, Finals) that ALL currently
-  // look identical — every one of them is still "TBD vs TBD" with no
-  // way to tell them apart by content alone. The real match IDs from
-  // this log are the only way to build a correct KNOWN_MATCH_CONNECTIONS
-  // entry for each one. Logging every stage's complete, unfiltered
-  // matches — remove once the Playoffs match IDs are confirmed.
-  if (__DEV__) {
-    for (const stage of data.data.standings[0]?.stages ?? []) {
-      console.log(`[fetchActiveStage] stage "${stage.name}":`, JSON.stringify(stage.sections, null, 2));
-    }
+  const stages = data.data.standings[0]?.stages ?? [];
+  const active = pickActiveStage(stages);
+
+  // Logs ONLY the currently active stage's raw sections — not every stage
+  // in the tournament. This used to loop over all of them unconditionally
+  // (needed once, to tell apart several identically-TBD downstream LCP
+  // Playoffs stages by content alone, before any of them had real data),
+  // but for a tournament with a genuinely large later stage sitting
+  // alongside a small current one — Worlds' own Swiss stage is 16 teams
+  // across 5 rounds, versus Play-In's 4 teams — dumping every stage
+  // floods a terminal's scrollback and can push the actually-wanted
+  // stage's log (Play-In) out of view entirely, even when Swiss itself
+  // has nothing real in it yet. Confirmed directly: a real report of
+  // Swiss's own placeholder log burying Play-In's. If a later stage
+  // genuinely needs its own raw dump for the same reason Playoffs once
+  // did (several stages that are all still TBD-vs-TBD and need telling
+  // apart by content), log that one stage explicitly when it becomes
+  // active, rather than reverting to logging everything.
+  if (__DEV__ && active) {
+    console.log(`[fetchActiveStage] stage "${active.name}":`, JSON.stringify(active.sections, null, 2));
   }
 
-  const stages = data.data.standings[0]?.stages ?? [];
-
-  return pickActiveStage(stages);
+  return active;
 }
 
 export interface BracketData {
@@ -793,6 +824,40 @@ export async function fetchBracketData(region: Region): Promise<BracketData | nu
   if (stageName.toLowerCase() === 'swiss') {
     return fetchSwissBracketData(stageName, activeStage, leagueId);
   }
+
+  return fetchEliminationBracketData(stageName, activeStage);
+}
+
+/** Worlds' own tournament ID — confirmed directly from the official
+ * overview page URL
+ * (https://lolesports.com/en-US/tournament/115660540725177488/overview).
+ * Worlds isn't any one Region's league, so there's no leagueId to
+ * resolve and no fetchTournamentsForLeague/pickCurrentTournament step —
+ * this goes straight to the one tournament ID that matters. */
+const WORLDS_TOURNAMENT_ID = '115660540725177488';
+
+/** Mirrors fetchBracketData above, but for Worlds specifically. Calls the
+ * exact same fetchActiveStage used by every region, which means the exact
+ * same `[fetchActiveStage] stage "X": [...]` diagnostic log every other
+ * bracket in this file was built from also fires for Worlds now — run the
+ * app with WorldsScreen open and __DEV__ true, and the console prints each
+ * of Worlds' real stages (Play-In first, then Swiss, then Knockout, as
+ * each actually goes live) with real match IDs, the same way LCS/LEC/LCK/
+ * LPL/CBLOL/LCP's brackets were each built from a pasted copy of this log.
+ *
+ * Only wired through fetchEliminationBracketData for now — Play-In is a
+ * double-elimination bracket, which that function already handles with no
+ * changes needed. Worlds' Swiss stage, once it has real data, will need
+ * its own path here (mirroring fetchSwissBracketData's leagueId-based
+ * schedule cross-reference) — not built yet since there's nothing real to
+ * build it against, and this function would currently hand a genuine
+ * Swiss stage to the elimination path, which doesn't understand Swiss's
+ * record-grouped rounds. Revisit once a real Worlds Swiss log comes back. */
+export async function fetchWorldsBracketData(): Promise<BracketData | null> {
+  const activeStage = await fetchActiveStage(WORLDS_TOURNAMENT_ID);
+  if (!activeStage) return null;
+
+  const stageName = activeStage.name ?? '';
 
   return fetchEliminationBracketData(stageName, activeStage);
 }
@@ -1127,6 +1192,21 @@ const KNOWN_MATCH_CONNECTIONS: Record<string, string> = {
   // Playoffs outside that bracket's own match graph). Only WE vs JDG's
   // winner actually advances within this bracket, to Round 2.
   '116957100120526830': '116957100120526836', // WE vs JDG winner -> Round 2, bottom slot
+  // Worlds Play-In (2026) — a 4-team double-elimination bracket, same
+  // shape as every other region's Playoffs, confirmed directly via a
+  // real [fetchActiveStage] log plus the user's own round-by-round
+  // breakdown (Round 1 "UBSF", feeding Round 2's Upper Bracket Final and
+  // Lower Bracket Semifinal, feeding Round 3's Lower Bracket Final,
+  // feeding Round 4's Final). Final's winner isn't fed into any further
+  // match in THIS bracket — it moves on to the Swiss stage instead, same
+  // "winner skips to an outcome outside this bracket's own match graph"
+  // pattern already seen for LCK Play-Ins Round 1 and the LPL Regional
+  // Qualifier, so Final correctly has no outgoing entry here.
+  '115660588583040710': '115660588583171790', // FUR vs MVK winner -> Upper Bracket Final, top slot
+  '115660588583171786': '115660588583171790', // C9 vs KC winner -> Upper Bracket Final, bottom slot
+  '115660588583171790': '116299649498303884', // Upper Bracket Final winner -> Final, top slot
+  '115660588583171794': '115660588583171798', // Lower Bracket Semifinal winner -> Lower Bracket Final, bottom slot
+  '115660588583171798': '116299649498303884', // Lower Bracket Final winner -> Final, bottom slot
 };
 
 /** Same discipline as KNOWN_MATCH_CONNECTIONS above, but for the LOSER's
@@ -1226,6 +1306,16 @@ const KNOWN_LOSER_CONNECTIONS: Record<string, string> = {
   // above). WE vs JDG's own loser has no entry here at all — explicitly
   // confirmed eliminated outright, not deposited anywhere.
   '116957100120526824': '116957100120526836', // TES vs IG loser -> Round 2, top slot
+  // Worlds Play-In — both Round 1 (UBSF) losers drop to the single Lower
+  // Bracket Semifinal match together, confirmed directly by the user
+  // ("Loser Deposits into LBSF" for both). Upper Bracket Final's loser
+  // deposits into Lower Bracket Final's top slot — explicitly confirmed
+  // ("Loser Deposits into TOP Team of LBF") — while Lower Bracket
+  // Final's own loser has no entry here at all: it's eliminated outright,
+  // only the winner continues (to the Swiss stage, outside this bracket).
+  '115660588583040710': '115660588583171794', // FUR vs MVK loser -> Lower Bracket Semifinal
+  '115660588583171786': '115660588583171794', // C9 vs KC loser -> Lower Bracket Semifinal
+  '115660588583171790': '115660588583171798', // Upper Bracket Final loser -> Lower Bracket Final, top slot
 };
 
 /** Explicit, directly-confirmed stage name for a specific matchId — same
@@ -1333,6 +1423,16 @@ const KNOWN_ROUND_LABELS: Record<string, string> = {
   '115565004607949417': 'Lower Bracket Semifinals',
   '115565004607949423': 'Lower Bracket Finals',
   '115565004607949429': 'Finals',
+  // Worlds Play-In — confirmed directly from the user's own column
+  // breakdown. Both Round 1 matches share "Upper Bracket Semifinal"
+  // (the user's own "UBSF" label), so they group together under one
+  // header rather than two separate ones.
+  '115660588583040710': 'Upper Bracket Semifinal',
+  '115660588583171786': 'Upper Bracket Semifinal',
+  '115660588583171790': 'Upper Bracket Final',
+  '115660588583171794': 'Lower Bracket Semifinal',
+  '115660588583171798': 'Lower Bracket Final',
+  '116299649498303884': 'Final',
 };
 
 /** Explicit column-number override for a specific matchId — used only
@@ -1483,6 +1583,12 @@ const CONNECTOR_TARGET_OFFSETS: Record<string, 'top' | 'bottom'> = {
   '115565004607949423': 'bottom', // Lower Bracket Finals -> Finals, bottom slot
   // LPL Regional Qualifier
   '116957100120526830': 'bottom', // WE vs JDG -> Round 2, bottom slot
+  // Worlds Play-In — confirmed directly from the user's own breakdown.
+  '115660588583040710': 'top', // FUR vs MVK -> Upper Bracket Final, top slot
+  '115660588583171786': 'bottom', // C9 vs KC -> Upper Bracket Final, bottom slot
+  '115660588583171790': 'top', // Upper Bracket Final -> Final, top slot
+  '115660588583171794': 'bottom', // Lower Bracket Semifinal -> Lower Bracket Final, bottom slot
+  '115660588583171798': 'bottom', // Lower Bracket Final -> Final, bottom slot
 };
 
 /** Same shape as CONNECTOR_TARGET_OFFSETS above, but for a match's LOSS
@@ -1539,6 +1645,15 @@ const LOSER_CONNECTOR_TARGET_OFFSETS: Record<string, 'top' | 'bottom'> = {
   '115565671526403057': 'top', // FUR vs RED loser -> Lower Bracket Round 1, top slot (RED confirmed to display first)
   '115548681803406291': 'top', // KC vs GX loser -> Lower Bracket Round 1 (NAVI's match), top slot (NAVI confirmed to display first)
   '115548681803406297': 'top', // VIT vs G2 loser -> Lower Bracket Round 1 (MKOI's match), top slot (MKOI confirmed to display first)
+  // Worlds Play-In
+  '115660588583171790': 'top', // Upper Bracket Final loser -> Lower Bracket Final, top slot (directly confirmed by the user)
+  // FUR vs MVK's and C9 vs KC's own losers (both -> Lower Bracket
+  // Semifinal) are deliberately left unset: no sibling to derive an
+  // offset from (both are loss-path into the same destination, so
+  // there's no win-path sibling the way UBSF->UBF has), and the user's
+  // breakdown didn't specify which of LBSF's two slots each lands in.
+  // Both teams are still TBD there until Round 1 actually plays out, so
+  // nothing currently depends on this — revisit once real results exist.
 };
 
 function fetchEliminationBracketData(stageName: string, stage: RawStage): BracketData {

@@ -4,21 +4,30 @@ import { useTheme } from '../theme/ThemeContext';
 import { AppText } from './AppText';
 import { Section } from './Section';
 import { useAsyncData } from '../hooks/useAsyncData';
-import { fetchBracketData, getLiveWatchUrl, lolesportsSlugForRegion, type BracketMatch, type BracketRound } from '../api/lolesportsClient';
+import {
+  fetchBracketData,
+  fetchWorldsBracketData,
+  getLiveWatchUrl,
+  lolesportsSlugForRegion,
+  type BracketMatch,
+  type BracketRound,
+} from '../api/lolesportsClient';
 import type { Region } from '../types/team';
+
+/** lolesports.com's own live-watch URL scheme (lolesports.com/live/<slug>)
+ * uses each region's real league slug — Worlds isn't a Region at all, so
+ * there's no lolesportsSlugForRegion lookup for it. "worlds" is the same
+ * slug the site's own URLs use elsewhere (e.g. the tournament overview
+ * page's own URL structure); not independently re-confirmed against a
+ * live getLive response the way each Region's slug is, since nothing
+ * is live yet to check it against. */
+const WORLDS_LEAGUE_SLUG = 'worlds';
 
 // Every constant below is a REAL, directly-observed value from a live
 // diagnostic dump of the actual rendered LCP Playoffs bracket — not an
 // estimate. See MatchCard/styles for where each one comes from.
 const CARD_HEIGHT = 71; // a normal (non-LIVE) match card's real rendered height
 const LABEL_HEIGHT = 19; // observed offset from a group's top to its card's top, when a recordLabel is shown above it
-// Same value as LABEL_HEIGHT — a reasonable estimate given the generic
-// "ROUND N" header uses similar small, bold text styling, but NOT yet
-// directly measured the way LABEL_HEIGHT was (that came from a real
-// diagnostic dump; this bug meant the generic header had never actually
-// rendered without overlapping anything before, so there was nothing to
-// measure it against). Worth confirming for real against a live render.
-const HEADER_HEIGHT = 19;
 const GROUP_GAP = 14; // groupList's own vertical gap between groups within one round
 const MATCH_GAP = 8; // matchList's own vertical gap between matches within one group
 const COLUMN_WIDTH = 150;
@@ -55,45 +64,23 @@ interface Position {
 function computePositions(rounds: BracketRound[]): Map<string, Position> {
   const positions = new Map<string, Position>();
 
-  // Destination matchId -> every source matchId that should count
-  // toward ITS centering. A win-path source (feedsInto) always counts —
-  // a bracket's vertical "lane" follows the winner-progression path. A
-  // loss-path source counts too, but ONLY when it has no separate
-  // win-path destination of its own: a source with both (LCP's Upper
-  // Bracket Finals, which independently feeds Finals via its own win
-  // path) has its position already determined by that other
-  // relationship, and including it here as well would pull the
-  // receiving match toward it incorrectly — confirmed directly against
-  // the real official page layout. A source whose ONLY role in this
-  // bracket is its loss-path connection (LCK's KT vs BRO, whose winner
-  // advances to Playoffs entirely outside this bracket, leaving the
-  // loss-path feed to Round 2 as its one and only connection here)
-  // correctly counts, since nothing else claims its position instead.
-  const centeringSourcesByDestination = new Map<string, string[]>();
+  // Reverse of each match's own feedsInto (WIN-path only, never
+  // feedsIntoOnLoss) — destination matchId -> every source matchId whose
+  // WINNER advances into it. A bracket's vertical "lane" follows the
+  // winner-progression path; a loss-path drop-in (Upper Bracket Finals'
+  // loser dropping to Lower Bracket Finals, for example) is a side input
+  // that shouldn't dictate where the receiving match sits — confirmed
+  // directly against the real official page layout.
+  const winSourcesByDestination = new Map<string, string[]>();
   for (const m of rounds.flatMap((r) => r.groups.flatMap((g) => g.matches))) {
-    if (m.feedsInto) {
-      if (!centeringSourcesByDestination.has(m.feedsInto)) centeringSourcesByDestination.set(m.feedsInto, []);
-      centeringSourcesByDestination.get(m.feedsInto)!.push(m.matchId);
-    }
-    if (m.feedsIntoOnLoss && !m.feedsInto) {
-      if (!centeringSourcesByDestination.has(m.feedsIntoOnLoss)) centeringSourcesByDestination.set(m.feedsIntoOnLoss, []);
-      centeringSourcesByDestination.get(m.feedsIntoOnLoss)!.push(m.matchId);
-    }
+    if (!m.feedsInto) continue;
+    if (!winSourcesByDestination.has(m.feedsInto)) winSourcesByDestination.set(m.feedsInto, []);
+    winSourcesByDestination.get(m.feedsInto)!.push(m.matchId);
   }
 
   rounds.forEach((round, roundIndex) => {
     const x = roundIndex * (COLUMN_WIDTH + COLUMN_GAP);
-    // A round showing the generic "ROUND N" header (not every group has
-    // its own confirmed recordLabel) needs its cascade to start BELOW
-    // that header's own height — otherwise the header and the first
-    // card both land at the column's true top (y=0) and directly
-    // overlap. A real, confirmed bug: every stage this was built and
-    // tested against (LCP Playoffs) always had confirmed labels by the
-    // time it launched, so this generic-header path was never actually
-    // exercised. Play-Ins (which never gets confirmed labels — only
-    // Playoffs-style stages do) hits it on every single region.
-    const allGroupsLabeled = round.groups.every((g) => g.recordLabel);
-    let cascadeY = allGroupsLabeled ? 0 : HEADER_HEIGHT; // where the NEXT group in this column naturally starts, given every group above it so far
+    let cascadeY = 0; // where the NEXT group in this column naturally starts, given every group above it so far
 
     for (const group of round.groups) {
       const naturalTopOfFirstCard = cascadeY + (group.recordLabel ? LABEL_HEIGHT : 0);
@@ -103,7 +90,7 @@ function computePositions(rounds: BracketRound[]): Map<string, Position> {
       // group with several matches (Swiss's own record-groups) has no
       // single position to center, and stays at its natural cascade spot.
       if (group.matches.length === 1) {
-        const sourceIds = centeringSourcesByDestination.get(group.matches[0].matchId);
+        const sourceIds = winSourcesByDestination.get(group.matches[0].matchId);
         if (sourceIds?.length) {
           const sourcePositions = sourceIds.map((id) => positions.get(id)).filter((p): p is Position => !!p);
           if (sourcePositions.length === sourceIds.length) {
@@ -132,8 +119,40 @@ function computePositions(rounds: BracketRound[]): Map<string, Position> {
 }
 
 export function BracketRounds({ region }: { region: Region }) {
-  const { colors } = useTheme();
   const { status, data } = useAsyncData(() => fetchBracketData(region), [region]);
+  return (
+    <BracketRoundsView status={status} stageName={data?.stageName} rounds={data?.rounds} leagueSlug={lolesportsSlugForRegion(region)} />
+  );
+}
+
+/** Worlds' own counterpart to BracketRounds above — same rendering, same
+ * loading/error/empty rules, just backed by fetchWorldsBracketData (no
+ * leagueId/region to resolve) instead of fetchBracketData(region). Calling
+ * this from WorldsScreen is what actually fires fetchActiveStage for
+ * Worlds' real tournament ID, which is how every other region's bracket
+ * in this app got its first real match IDs: run the app with this screen
+ * open and __DEV__ true, and the same `[fetchActiveStage] stage "X":
+ * [...]` log every other bracket was built from prints Worlds' real
+ * current stage (Play-In first). */
+export function WorldsBracketRounds() {
+  const { status, data } = useAsyncData(() => fetchWorldsBracketData(), []);
+  return (
+    <BracketRoundsView status={status} stageName={data?.stageName} rounds={data?.rounds} leagueSlug={WORLDS_LEAGUE_SLUG} />
+  );
+}
+
+function BracketRoundsView({
+  status,
+  stageName,
+  rounds: roundsProp,
+  leagueSlug,
+}: {
+  status: string;
+  stageName?: string;
+  rounds?: BracketRound[];
+  leagueSlug: string;
+}) {
+  const { colors } = useTheme();
 
   // Unlike Standings (always relevant), a bracket section only makes sense
   // while one is actually happening — so this owns its own Section wrapper
@@ -161,23 +180,29 @@ export function BracketRounds({ region }: { region: Region }) {
   // OR because the active stage is a real one (Play-Ins, Playoffs) that
   // isn't built out yet — see fetchBracketData's own comment. Either way,
   // nothing to show yet.
-  const rounds = data?.rounds ?? [];
+  const rounds = roundsProp ?? [];
   if (rounds.length === 0) {
     return null;
   }
 
-  const leagueSlug = lolesportsSlugForRegion(region);
   const positions = computePositions(rounds);
 
   const allMatches = rounds.flatMap((r) => r.groups.flatMap((g) => g.matches));
   const connectors = allMatches
+    // suppressConnectorLine (LCK Regional Championship Round 1, confirmed
+    // by the user to draw no line at all despite the connection being
+    // real) was previously set on every match's data but never actually
+    // read here — this is the fix: filtering it out here, not just
+    // carrying it on the data, is what actually suppresses the line.
     .filter((m) => m.feedsInto && !m.suppressConnectorLine)
     .map((m) => ({
       from: positions.get(m.matchId),
       to: positions.get(m.feedsInto!),
-      targetOffset: m.connectorTargetOffset,
+      offset: m.connectorTargetOffset,
     }))
-    .filter((c): c is { from: Position; to: Position; targetOffset: 'top' | 'bottom' | undefined } => !!c.from && !!c.to);
+    .filter(
+      (c): c is { from: Position; to: Position; offset: 'top' | 'bottom' | undefined } => !!c.from && !!c.to
+    );
 
   // Absolutely-positioned children don't contribute to their parent's
   // auto-computed size the way normal flex children do — the container
@@ -186,7 +211,7 @@ export function BracketRounds({ region }: { region: Region }) {
   const contentWidth = rounds.length * (COLUMN_WIDTH + COLUMN_GAP) - COLUMN_GAP;
 
   return (
-    <Section title={`${data!.stageName} Bracket`}>
+    <Section title={`${stageName} Bracket`}>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         <View style={{ width: contentWidth, height: contentHeight, position: 'relative' }}>
           {rounds.map((round, roundIndex) => {
@@ -208,7 +233,7 @@ export function BracketRounds({ region }: { region: Region }) {
                 {!allGroupsLabeled ? (
                   <AppText
                     weight="bold"
-                    style={[styles.roundHeader, { color: colors.accentReadable, position: 'absolute', left: x, top: 0 }]}
+                    style={[styles.roundHeader, { color: colors.textMuted, position: 'absolute', left: x, top: 0 }]}
                   >
                     {`ROUND ${round.roundNumber}`}
                   </AppText>
@@ -242,7 +267,7 @@ export function BracketRounds({ region }: { region: Region }) {
             );
           })}
           {connectors.map((c, i) => (
-            <Connector key={i} from={c.from} to={c.to} color={colors.border} targetOffset={c.targetOffset} />
+            <Connector key={i} from={c.from} to={c.to} offset={c.offset} color={colors.border} />
           ))}
         </View>
       </ScrollView>
@@ -250,31 +275,48 @@ export function BracketRounds({ region }: { region: Region }) {
   );
 }
 
+/** Vertical distance from a match card's center to the center of its TOP
+ * or BOTTOM team row specifically — derived directly from this file's own
+ * already-real CARD_HEIGHT (71) and MatchCard's own exact style values
+ * (card padding 10, card gap 6, divider height 1, border 1, two equal-
+ * height team rows): innerHeight = 71 - 2*1(border) = 69; content =
+ * 69 - 2*10(padding) = 49; without the two 6px gaps = 37; each team row
+ * = (37 - 1(divider)) / 2 = 18; the top row's own center sits
+ * 1(border) + 10(padding) + 9(half a row) = 20px from the card's top,
+ * and the card's own center is at 71/2 = 35.5 — a 15.5px difference.
+ * Not an independently re-measured constant the way CARD_HEIGHT etc. are,
+ * but computed from them exactly, not guessed. */
+const TEAM_ROW_Y_OFFSET = 15.5;
+
 /** Draws an L-shaped connector from the right edge of one card's vertical
  * center to the left edge of another's — the same shape lolesports.com's
  * own bracket page uses. Built from three plain, absolutely-positioned
  * Views (a horizontal segment, a vertical segment, another horizontal
- * segment) rather than adding an SVG dependency for one simple line. */
+ * segment) rather than adding an SVG dependency for one simple line.
+ *
+ * `offset` — connectorTargetOffset from the SOURCE match's own data — was
+ * previously accepted by this component's prop type in spirit (described
+ * in BracketMatch's own comment) but never actually passed in or used:
+ * the line always landed on the destination's full-card vertical center,
+ * regardless of which specific team slot (top or bottom) the match
+ * actually feeds. That's the real gap this closes — every confirmed
+ * "feeds the top/bottom team" connection across every region's bracket
+ * (not just Worlds) now visually lands on that exact row, not the
+ * ambiguous midpoint between both. */
 function Connector({
   from,
   to,
+  offset,
   color,
-  targetOffset,
 }: {
   from: Position;
   to: Position;
+  offset?: 'top' | 'bottom';
   color: string;
-  targetOffset?: 'top' | 'bottom';
 }) {
   const fromY = from.y + from.height / 2;
-  // A card's two team slots split its height roughly in half around the
-  // divider — 0.25 lands on the first (top) slot's own center, 0.75 on
-  // the second (bottom) slot's, rather than the card's overall center.
-  // See BracketMatch.connectorTargetOffset's own comment for why this
-  // is needed at all: it's not a general "line drawing" preference, but
-  // a specific, confirmed visual fact about which slot a given
-  // connection actually advances into on the real page.
-  const toY = to.y + to.height * (targetOffset === 'bottom' ? 0.75 : targetOffset === 'top' ? 0.25 : 0.5);
+  const toYBase = to.y + to.height / 2;
+  const toY = offset === 'top' ? toYBase - TEAM_ROW_Y_OFFSET : offset === 'bottom' ? toYBase + TEAM_ROW_Y_OFFSET : toYBase;
   const fromX = from.x + COLUMN_WIDTH;
   const toX = to.x;
   // Deliberately the midpoint of the GAP immediately before the
