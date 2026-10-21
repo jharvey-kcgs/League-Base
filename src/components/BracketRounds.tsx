@@ -11,6 +11,7 @@ import {
   lolesportsSlugForRegion,
   type BracketMatch,
   type BracketRound,
+  type BracketTeam,
 } from '../api/lolesportsClient';
 import type { Region } from '../types/team';
 
@@ -32,6 +33,23 @@ const GROUP_GAP = 14; // groupList's own vertical gap between groups within one 
 const MATCH_GAP = 8; // matchList's own vertical gap between matches within one group
 const COLUMN_WIDTH = 150;
 const COLUMN_GAP = 14; // contentWrap's own horizontal gap between round columns
+
+// Worlds Swiss header squares (like lolesports.com): green = win, red = loss,
+// grey = not played yet, always 4 squares.
+const SWISS_SQUARES = 4;
+const SWISS_WIN_COLOR = '#2BB673';
+const SWISS_LOSS_COLOR = '#E5484D';
+
+// ADVANCES / ELIMINATED column at the right edge of a Worlds Swiss bracket:
+// two stacked lists of 8 slots each (8 teams advance, 8 go home).
+const OUTCOME_SLOTS = 8;
+const OUTCOME_HEADING_HEIGHT = LABEL_HEIGHT;
+const OUTCOME_ROW_HEIGHT = 30;
+const OUTCOME_ROW_GAP = 6;
+const OUTCOME_SECTION_GAP = 14;
+const OUTCOME_SECTION_HEIGHT =
+  OUTCOME_HEADING_HEIGHT + OUTCOME_SLOTS * OUTCOME_ROW_HEIGHT + (OUTCOME_SLOTS - 1) * OUTCOME_ROW_GAP;
+const OUTCOME_HEIGHT = OUTCOME_SECTION_HEIGHT * 2 + OUTCOME_SECTION_GAP;
 
 interface Position {
   x: number;
@@ -137,7 +155,13 @@ export function BracketRounds({ region }: { region: Region }) {
 export function WorldsBracketRounds() {
   const { status, data } = useAsyncData(() => fetchWorldsBracketData(), []);
   return (
-    <BracketRoundsView status={status} stageName={data?.stageName} rounds={data?.rounds} leagueSlug={WORLDS_LEAGUE_SLUG} />
+    <BracketRoundsView
+      status={status}
+      stageName={data?.stageName}
+      rounds={data?.rounds}
+      leagueSlug={WORLDS_LEAGUE_SLUG}
+      outcome={data?.swissOutcome}
+    />
   );
 }
 
@@ -146,11 +170,13 @@ function BracketRoundsView({
   stageName,
   rounds: roundsProp,
   leagueSlug,
+  outcome,
 }: {
   status: string;
   stageName?: string;
   rounds?: BracketRound[];
   leagueSlug: string;
+  outcome?: { advances: BracketTeam[]; eliminated: BracketTeam[] };
 }) {
   const { colors } = useTheme();
 
@@ -207,8 +233,12 @@ function BracketRoundsView({
   // Absolutely-positioned children don't contribute to their parent's
   // auto-computed size the way normal flex children do — the container
   // needs an explicit height, taken from whichever match ends up lowest.
-  const contentHeight = Math.max(0, ...[...positions.values()].map((p) => p.y + p.height));
-  const contentWidth = rounds.length * (COLUMN_WIDTH + COLUMN_GAP) - COLUMN_GAP;
+  const contentHeight = Math.max(
+    0,
+    ...[...positions.values()].map((p) => p.y + p.height),
+    outcome ? OUTCOME_HEIGHT : 0
+  );
+  const contentWidth = (rounds.length + (outcome ? 1 : 0)) * (COLUMN_WIDTH + COLUMN_GAP) - COLUMN_GAP;
 
   return (
     <Section title={`${stageName} Bracket`}>
@@ -243,7 +273,14 @@ function BracketRoundsView({
                   if (!firstMatchPos) return null;
                   return (
                     <React.Fragment key={group.recordLabel || 'all'}>
-                      {group.recordLabel ? (
+                      {group.record ? (
+                        <SwissGroupHeader
+                          roundNumber={round.roundNumber}
+                          record={group.record}
+                          x={x}
+                          y={firstMatchPos.y - LABEL_HEIGHT}
+                        />
+                      ) : group.recordLabel ? (
                         <AppText
                           weight="bold"
                           style={[
@@ -269,9 +306,100 @@ function BracketRoundsView({
           {connectors.map((c, i) => (
             <Connector key={i} from={c.from} to={c.to} offset={c.offset} color={colors.border} />
           ))}
+          {outcome ? <SwissOutcomeColumn outcome={outcome} x={rounds.length * (COLUMN_WIDTH + COLUMN_GAP)} /> : null}
         </View>
       </ScrollView>
     </Section>
+  );
+}
+
+/** "ROUND 3" plus four record squares (green wins, red losses, grey for the
+ * rest), pinned just above a Worlds Swiss group's first card. */
+function SwissGroupHeader({
+  roundNumber,
+  record,
+  x,
+  y,
+}: {
+  roundNumber: number;
+  record: { wins: number; losses: number };
+  x: number;
+  y: number;
+}) {
+  const { colors } = useTheme();
+  return (
+    <View style={[styles.swissHeader, { left: x, top: y, width: COLUMN_WIDTH, height: LABEL_HEIGHT }]}>
+      <AppText weight="bold" style={[styles.roundHeader, { color: colors.textMuted }]}>
+        {`ROUND ${roundNumber}`}
+      </AppText>
+      <View style={styles.squares}>
+        {Array.from({ length: SWISS_SQUARES }, (_, i) => (
+          <View
+            key={i}
+            style={[
+              styles.square,
+              {
+                backgroundColor:
+                  i < record.wins ? SWISS_WIN_COLOR : i < record.wins + record.losses ? SWISS_LOSS_COLOR : colors.border,
+              },
+            ]}
+          />
+        ))}
+      </View>
+    </View>
+  );
+}
+
+/** The ADVANCES / ELIMINATED lists — 8 slots each, filled in with a team's
+ * code as it reaches 3 wins / 3 losses, "TBD" until then. */
+function SwissOutcomeColumn({
+  outcome,
+  x,
+}: {
+  outcome: { advances: BracketTeam[]; eliminated: BracketTeam[] };
+  x: number;
+}) {
+  const { colors } = useTheme();
+  const sections = [
+    { label: 'ADVANCES', teams: outcome.advances, top: 0 },
+    { label: 'ELIMINATED', teams: outcome.eliminated, top: OUTCOME_SECTION_HEIGHT + OUTCOME_SECTION_GAP },
+  ];
+  return (
+    <>
+      {sections.map((section) => (
+        <React.Fragment key={section.label}>
+          <AppText
+            weight="bold"
+            style={[styles.roundHeader, { color: colors.accentReadable, position: 'absolute', left: x, top: section.top }]}
+          >
+            {section.label}
+          </AppText>
+          {Array.from({ length: OUTCOME_SLOTS }, (_, i) => {
+            const team = section.teams[i];
+            return (
+              <View
+                key={i}
+                style={[
+                  styles.outcomeRow,
+                  {
+                    backgroundColor: colors.surface,
+                    borderColor: colors.border,
+                    left: x,
+                    top: section.top + OUTCOME_HEADING_HEIGHT + i * (OUTCOME_ROW_HEIGHT + OUTCOME_ROW_GAP),
+                    width: COLUMN_WIDTH,
+                    height: OUTCOME_ROW_HEIGHT,
+                  },
+                ]}
+              >
+                <AppText weight={team ? 'bold' : 'regular'} style={{ color: team ? colors.text : colors.textMuted }} numberOfLines={1}>
+                  {team?.code ?? 'TBD'}
+                </AppText>
+              </View>
+            );
+          })}
+        </React.Fragment>
+      ))}
+    </>
   );
 }
 
@@ -409,6 +537,16 @@ const styles = StyleSheet.create({
   divider: { height: 1 },
   teamRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 6 },
   liveLabel: { fontSize: 10, marginTop: 2 },
+  swissHeader: { position: 'absolute', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  squares: { flexDirection: 'row', gap: 3 },
+  square: { width: 8, height: 8, borderRadius: 2 },
+  outcomeRow: {
+    position: 'absolute',
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    justifyContent: 'center',
+  },
   lineH: { position: 'absolute', height: 2 },
   lineV: { position: 'absolute', width: 2 },
 });

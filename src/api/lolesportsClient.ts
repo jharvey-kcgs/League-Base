@@ -680,6 +680,11 @@ export interface BracketMatchGroup {
    * Empty string for Round 1, where every team is 0-0 and there's only
    * one group — nothing meaningful to label. */
   recordLabel: string;
+  /** Wins/losses entering this group, as numbers — only set by the Worlds
+   * Swiss path, where the header draws green/red/grey record squares
+   * (like lolesports.com's own page) instead of the plain recordLabel
+   * text. Undefined for every other bracket, which keeps the old header. */
+  record?: { wins: number; losses: number };
   matches: BracketMatch[];
 }
 
@@ -802,6 +807,10 @@ export interface BracketData {
    * fetchSwissBracketData and fetchEliminationBracketData for how each
    * stage shape actually gets built. */
   rounds: BracketRound[];
+  /** Worlds Swiss only: who has locked in (3 wins) or been knocked out
+   * (3 losses) so far, in the order it happened. Undefined for every other
+   * stage. */
+  swissOutcome?: { advances: BracketTeam[]; eliminated: BracketTeam[] };
 }
 
 /** Top-level entry point — resolves the active stage, then delegates to
@@ -845,21 +854,118 @@ const WORLDS_TOURNAMENT_ID = '115660540725177488';
  * each actually goes live) with real match IDs, the same way LCS/LEC/LCK/
  * LPL/CBLOL/LCP's brackets were each built from a pasted copy of this log.
  *
- * Only wired through fetchEliminationBracketData for now — Play-In is a
- * double-elimination bracket, which that function already handles with no
- * changes needed. Worlds' Swiss stage, once it has real data, will need
- * its own path here (mirroring fetchSwissBracketData's leagueId-based
- * schedule cross-reference) — not built yet since there's nothing real to
- * build it against, and this function would currently hand a genuine
- * Swiss stage to the elimination path, which doesn't understand Swiss's
- * record-grouped rounds. Revisit once a real Worlds Swiss log comes back. */
+ * Play-In (double-elimination) goes through fetchEliminationBracketData;
+ * Swiss goes through fetchWorldsSwissBracketData below, which is driven by
+ * a hand-confirmed layout table (every one of Swiss' 33 match IDs is
+ * pre-allocated by the API from day one, so nothing needs reconstructing
+ * from records). Knockout isn't built yet — it would currently fall into
+ * the elimination path, same as Play-In did before it was built out. */
 export async function fetchWorldsBracketData(): Promise<BracketData | null> {
   const activeStage = await fetchActiveStage(WORLDS_TOURNAMENT_ID);
   if (!activeStage) return null;
 
   const stageName = activeStage.name ?? '';
 
+  if (stageName.toLowerCase() === 'swiss') {
+    return fetchWorldsSwissBracketData(stageName, activeStage);
+  }
+
   return fetchEliminationBracketData(stageName, activeStage);
+}
+
+/** Worlds 2026 Swiss stage layout — confirmed directly from a real
+ * [fetchActiveStage] log (all 33 matches come back pre-allocated with real
+ * IDs, Round 2+ as TBD-vs-TBD until Riot fills them in) plus the user's own
+ * column-by-column breakdown of lolesports.com's page. Round 1 is 0-0
+ * (8 matches), Round 2 splits 1-0 / 0-1, Round 3 splits 2-0 / 1-1 / 0-2,
+ * Round 4 splits 2-1 / 1-2, Round 5 is 2-2. Rounds 1-2 are Bo1, the rest Bo3.
+ * ASSUMPTION to verify once Round 1 finishes: that Riot fills each TBD slot
+ * into the group its ID sits in (e.g. ...021-...027 really are the 1-0
+ * pairings) — the IDs' own order strongly suggests it, but it's unconfirmed
+ * until real results populate them. */
+const WORLDS_SWISS_LAYOUT: Array<{ round: number; wins: number; losses: number; matchIds: string[] }> = [
+  {
+    round: 1, wins: 0, losses: 0,
+    matchIds: [
+      '115660540726095005', // GEN vs IG
+      '115660540726095007', // TLAW vs CFO
+      '115660540726095009', // AL vs KC
+      '115660540726095011', // G2 vs DK
+      '115660540726095013', // HLE vs TES
+      '115660540726095015', // LOS vs T1
+      '115660540726095017', // TSW vs LYON
+      '115660540726095019', // BLG vs MKOI
+    ],
+  },
+  { round: 2, wins: 1, losses: 0, matchIds: ['115660540726095021', '115660540726095023', '115660540726095025', '115660540726095027'] },
+  { round: 2, wins: 0, losses: 1, matchIds: ['115660540726095029', '115660540726095031', '115660540726095033', '115660540726095035'] },
+  { round: 3, wins: 2, losses: 0, matchIds: ['115660540726095037', '115660540726095041'] },
+  { round: 3, wins: 1, losses: 1, matchIds: ['115660540726095045', '115660540726095047', '115660540726095049', '115660540726095051'] },
+  { round: 3, wins: 0, losses: 2, matchIds: ['115660540726095053', '115660540726095057'] },
+  { round: 4, wins: 2, losses: 1, matchIds: ['115660540726095061', '115660540726095065', '115660540726095069'] },
+  { round: 4, wins: 1, losses: 2, matchIds: ['115660540726095073', '115660540726095077', '115660540726095081'] },
+  { round: 5, wins: 2, losses: 2, matchIds: ['115660540726095085', '115660540726095089', '115660540726095093'] },
+];
+
+/** Worlds' Swiss rule, confirmed by the user: 3 wins advances to Knockout,
+ * 3 losses is eliminated. (Deliberately NOT shared with LCP's Swiss logic
+ * above, where the 3-losses half turned out wrong — that bracket is untouched.) */
+const WORLDS_SWISS_WINS_TO_ADVANCE = 3;
+const WORLDS_SWISS_LOSSES_TO_ELIMINATE = 3;
+
+function fetchWorldsSwissBracketData(stageName: string, stage: RawStage): BracketData {
+  const matchById = new Map(stage.sections.flatMap((s) => s.matches ?? []).map((m) => [m.id, m]));
+
+  const rounds: BracketRound[] = [];
+  const tally = new Map<string, { wins: number; losses: number }>();
+  const advances: BracketTeam[] = [];
+  const eliminated: BracketTeam[] = [];
+
+  for (const layout of WORLDS_SWISS_LAYOUT) {
+    const matches: BracketMatch[] = [];
+    for (const id of layout.matchIds) {
+      const raw = matchById.get(id);
+      if (!raw) continue;
+      const a = raw.teams[0] ?? null;
+      const b = raw.teams[1] ?? null;
+      matches.push({
+        matchId: raw.id,
+        state: raw.state,
+        teamA: toBracketTeam(a),
+        teamB: toBracketTeam(b),
+        scoreA: a?.result?.gameWins ?? 0,
+        scoreB: b?.result?.gameWins ?? 0,
+      });
+
+      // Tally in layout (= round) order so ADVANCES / ELIMINATED read in the
+      // order teams actually got there.
+      if (raw.state === 'completed') {
+        for (const team of [a, b]) {
+          if (!team || team.code === 'TBD') continue;
+          const entry = tally.get(team.id) ?? { wins: 0, losses: 0 };
+          if (team.result?.outcome === 'win') entry.wins += 1;
+          if (team.result?.outcome === 'loss') entry.losses += 1;
+          tally.set(team.id, entry);
+          if (team.result?.outcome === 'win' && entry.wins === WORLDS_SWISS_WINS_TO_ADVANCE) advances.push(toBracketTeam(team));
+          if (team.result?.outcome === 'loss' && entry.losses === WORLDS_SWISS_LOSSES_TO_ELIMINATE) eliminated.push(toBracketTeam(team));
+        }
+      }
+    }
+    if (matches.length === 0) continue;
+
+    let round = rounds.find((r) => r.roundNumber === layout.round);
+    if (!round) {
+      round = { roundNumber: layout.round, groups: [] };
+      rounds.push(round);
+    }
+    round.groups.push({
+      recordLabel: `${layout.wins}-${layout.losses}`,
+      record: { wins: layout.wins, losses: layout.losses },
+      matches,
+    });
+  }
+
+  return { stageName, rounds, swissOutcome: { advances, eliminated } };
 }
 
 /** Reconstructs a Swiss stage's actual bracket shape — not just "Round N"
