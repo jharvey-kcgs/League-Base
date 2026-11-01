@@ -9,6 +9,9 @@ import { resolveTeamColor } from '../types/team';
 import { ensureUIContrastOn } from '../utils/colorContrast';
 import { WORLDS_QUALIFIERS, type WorldsQualifiedTeam } from '../data/worldsQualifiers';
 
+// Same red the Swiss loss squares use in BracketRounds.tsx.
+const ELIMINATED_RED = '#E5484D';
+
 export function WorldsTeams({ onSelectTeam }: { onSelectTeam: (teamId: string) => void }) {
   const { colors } = useTheme();
 
@@ -98,6 +101,7 @@ function QualifierRow({
   if (!team) return null;
   const rawColor = resolveTeamColor(team, colors.accent);
   const ringColor = ensureUIContrastOn(rawColor, colors.surface);
+  const out = !!qualifier.eliminated;
 
   return (
     <Pressable
@@ -111,10 +115,31 @@ function QualifierRow({
       <AppText weight="bold" style={[styles.seed, { color: colors.textMuted }]}>
         {qualifier.seed !== null ? `#${qualifier.seed}` : '—'}
       </AppText>
-      <LogoChip url={team.logoUrl} name={team.name} ringColor={ringColor} size={32} />
-      <AppText weight="bold" style={[styles.teamName, { color: colors.text }]} numberOfLines={1}>
+      {/* An eliminated team stays in the list (so region grouping and seed
+       * order still make sense, and it's still tappable) but its logo and
+       * name are dimmed, the name is struck through, and a red ELIMINATED
+       * tag sits on the right — the tag itself is NOT dimmed. */}
+      <View style={out ? styles.dimmed : undefined}>
+        <LogoChip url={team.logoUrl} name={team.name} ringColor={ringColor} size={32} />
+      </View>
+      <AppText
+        weight="bold"
+        style={[
+          styles.teamName,
+          { color: out ? colors.textMuted : colors.text },
+          out && styles.struck,
+        ]}
+        numberOfLines={1}
+      >
         {team.name}
       </AppText>
+      {out ? (
+        <View style={styles.eliminatedTag}>
+          <AppText weight="bold" style={styles.eliminatedText}>
+            ELIMINATED
+          </AppText>
+        </View>
+      ) : null}
     </Pressable>
   );
 }
@@ -134,4 +159,14 @@ const styles = StyleSheet.create({
   seed: { fontSize: 13, width: 24 },
   teamName: { fontSize: 14, flex: 1 },
   seedNote: { fontSize: 12, fontStyle: 'italic', marginTop: 2 },
+  dimmed: { opacity: 0.45 },
+  struck: { textDecorationLine: 'line-through' },
+  eliminatedTag: {
+    borderWidth: 1,
+    borderColor: ELIMINATED_RED,
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  eliminatedText: { fontSize: 10, letterSpacing: 0.5, color: ELIMINATED_RED },
 });
