@@ -7,13 +7,22 @@ import { PlaceholderCard } from './PlaceholderCard';
 import { getTeam } from '../data/teamsStore';
 import { resolveTeamColor } from '../types/team';
 import { ensureUIContrastOn } from '../utils/colorContrast';
-import { WORLDS_QUALIFIERS, type WorldsQualifiedTeam } from '../data/worldsQualifiers';
+import { WORLDS_QUALIFIERS, WORLDS_CODE_TO_TEAM_ID, type WorldsQualifiedTeam } from '../data/worldsQualifiers';
+import { useAsyncData } from '../hooks/useAsyncData';
+import { fetchWorldsKnockoutLosers } from '../api/lolesportsClient';
 
 // Same red the Swiss loss squares use in BracketRounds.tsx.
 const ELIMINATED_RED = '#E5484D';
 
 export function WorldsTeams({ onSelectTeam }: { onSelectTeam: (teamId: string) => void }) {
   const { colors } = useTheme();
+  // Knockouts is single-elimination Bo5, so any team that has lost a match
+  // there is out. Derived live from the same stage data the bracket uses —
+  // the hand-set `eliminated` flags still count too (Play-In/Swiss exits).
+  // If the request fails or Knockouts isn't live yet this is just empty and
+  // the list shows only the hand-set flags.
+  const { data: knockoutLosers } = useAsyncData(() => fetchWorldsKnockoutLosers(), []);
+  const knockoutOutIds = new Set((knockoutLosers ?? []).map((code) => WORLDS_CODE_TO_TEAM_ID[code]).filter(Boolean));
 
   return (
     <View style={styles.regions}>
@@ -49,6 +58,7 @@ export function WorldsTeams({ onSelectTeam }: { onSelectTeam: (teamId: string) =
                       // here, unlike teamId, so it's the safer key.
                       key={qualifier.seed ?? `unseeded-${qualifier.teamId}`}
                       qualifier={qualifier}
+                      knockoutOut={!!qualifier.teamId && knockoutOutIds.has(qualifier.teamId)}
                       isLast={i === sorted.length - 1}
                       onPress={qualifier.teamId ? () => onSelectTeam(qualifier.teamId!) : undefined}
                     />
@@ -70,10 +80,13 @@ export function WorldsTeams({ onSelectTeam }: { onSelectTeam: (teamId: string) =
 
 function QualifierRow({
   qualifier,
+  knockoutOut,
   isLast,
   onPress,
 }: {
   qualifier: WorldsQualifiedTeam;
+  /** True when the live Knockouts data says this team has lost a match. */
+  knockoutOut: boolean;
   isLast: boolean;
   onPress?: () => void;
 }) {
@@ -101,7 +114,7 @@ function QualifierRow({
   if (!team) return null;
   const rawColor = resolveTeamColor(team, colors.accent);
   const ringColor = ensureUIContrastOn(rawColor, colors.surface);
-  const out = !!qualifier.eliminated;
+  const out = !!qualifier.eliminated || knockoutOut;
 
   return (
     <Pressable

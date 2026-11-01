@@ -22,6 +22,22 @@ export interface WorldsQualifiedTeam {
   eliminated?: boolean;
 }
 
+/** Worlds Knockouts teams: lolesports team code -> teams.json id. Hand-
+ * confirmed (codes from the real Knockouts log, ids from the qualifiers
+ * list below). Needed because the API reports a loser by CODE, while this
+ * file's rows are keyed by teamId — and GEN's code differs from its id
+ * ('geng'), so a plain lowercase match isn't safe. */
+export const WORLDS_CODE_TO_TEAM_ID: Record<string, string> = {
+  DK: 'dk',
+  BLG: 'blg',
+  T1: 't1',
+  KC: 'kc',
+  TES: 'tes',
+  IG: 'ig',
+  GEN: 'geng',
+  LYON: 'lyon',
+};
+
 export interface WorldsRegionQualifiers {
   region: Region;
   /** Empty array means nothing is confirmed for this region yet. */

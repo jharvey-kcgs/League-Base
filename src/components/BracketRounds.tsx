@@ -57,6 +57,15 @@ interface Position {
   height: number;
 }
 
+/** Matches that share a labeled group with another match (Worlds Knockouts'
+ * two Semifinals) but should each be centered on their own feeder matches
+ * rather than stacked. Hand-listed so no other bracket's approved layout
+ * changes. */
+const CENTER_EACH_ON_SOURCES = new Set<string>([
+  '115660540726095121', // Worlds Knockouts Semifinal 1 — centered between the top two Quarterfinals
+  '115660540726095127', // Worlds Knockouts Semifinal 2 — centered between the bottom two Quarterfinals
+]);
+
 /** Computes an exact, deterministic pixel position for every match in the
  * bracket, entirely upfront — no runtime measurement, no onLayout, no
  * waiting for a render cycle to settle. This replaces a measurement-based
@@ -125,8 +134,23 @@ function computePositions(rounds: BracketRound[]): Map<string, Position> {
 
       let matchY = topOfFirstCard;
       for (const match of group.matches) {
-        positions.set(match.matchId, { x, y: matchY, height: CARD_HEIGHT });
-        matchY += CARD_HEIGHT + MATCH_GAP;
+        let y = matchY;
+        // A multi-match group normally just stacks. The matches listed in
+        // CENTER_EACH_ON_SOURCES are the exception: each one sits at the
+        // vertical middle of the match(es) that feed it, like a lone match
+        // does above — never higher than where it would naturally stack,
+        // so two such matches can't overlap.
+        if (group.matches.length > 1 && CENTER_EACH_ON_SOURCES.has(match.matchId)) {
+          const sourceIds = winSourcesByDestination.get(match.matchId) ?? [];
+          const sourcePositions = sourceIds.map((id) => positions.get(id)).filter((p): p is Position => !!p);
+          if (sourceIds.length > 0 && sourcePositions.length === sourceIds.length) {
+            const desiredCenterY =
+              sourcePositions.reduce((sum, p) => sum + p.y + p.height / 2, 0) / sourcePositions.length;
+            y = Math.max(matchY, desiredCenterY - CARD_HEIGHT / 2);
+          }
+        }
+        positions.set(match.matchId, { x, y, height: CARD_HEIGHT });
+        matchY = y + CARD_HEIGHT + MATCH_GAP;
       }
       const groupBottom = matchY - MATCH_GAP;
       cascadeY = groupBottom + GROUP_GAP;

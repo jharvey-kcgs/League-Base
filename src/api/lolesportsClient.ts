@@ -845,6 +845,45 @@ export async function fetchBracketData(region: Region): Promise<BracketData | nu
  * this goes straight to the one tournament ID that matters. */
 const WORLDS_TOURNAMENT_ID = '115660540725177488';
 
+/** Two Worlds components need the active stage at once (the bracket and the
+ * Teams list's eliminated markers). A short-lived shared promise means they
+ * make ONE request and fire ONE [fetchActiveStage] log between them, instead
+ * of two — the log is large and has flooded the terminal before. */
+const WORLDS_STAGE_CACHE_MS = 15000;
+let worldsStageCache: { at: number; promise: Promise<RawStage | null> } | null = null;
+
+function fetchWorldsActiveStageCached(): Promise<RawStage | null> {
+  if (worldsStageCache && Date.now() - worldsStageCache.at < WORLDS_STAGE_CACHE_MS) {
+    return worldsStageCache.promise;
+  }
+  const promise = fetchActiveStage(WORLDS_TOURNAMENT_ID);
+  worldsStageCache = { at: Date.now(), promise };
+  // A failed request must not be served from cache for the next 15 seconds.
+  promise.catch(() => {
+    if (worldsStageCache?.promise === promise) worldsStageCache = null;
+  });
+  return promise;
+}
+
+/** Team codes (e.g. "DK", "BLG") of every team that has LOST a match in the
+ * Worlds Knockouts stage. Knockouts is single-elimination, so one loss ends
+ * a team's run — this is what lets the Teams list mark teams ELIMINATED
+ * automatically as each Bo5 finishes, with no hand edits. Empty before the
+ * Knockouts stage is active, or if nothing has finished. */
+export async function fetchWorldsKnockoutLosers(): Promise<string[]> {
+  const stage = await fetchWorldsActiveStageCached();
+  if (!stage || !(stage.name ?? '').toLowerCase().startsWith('knockout')) return [];
+  const losers: string[] = [];
+  for (const section of stage.sections) {
+    for (const match of section.matches ?? []) {
+      for (const team of match.teams) {
+        if (team && team.code !== 'TBD' && team.result?.outcome === 'loss') losers.push(team.code);
+      }
+    }
+  }
+  return losers;
+}
+
 /** Mirrors fetchBracketData above, but for Worlds specifically. Calls the
  * exact same fetchActiveStage used by every region, which means the exact
  * same `[fetchActiveStage] stage "X": [...]` diagnostic log every other
@@ -858,10 +897,11 @@ const WORLDS_TOURNAMENT_ID = '115660540725177488';
  * Swiss goes through fetchWorldsSwissBracketData below, which is driven by
  * a hand-confirmed layout table (every one of Swiss' 33 match IDs is
  * pre-allocated by the API from day one, so nothing needs reconstructing
- * from records). Knockout isn't built yet — it would currently fall into
- * the elimination path, same as Play-In did before it was built out. */
+ * from records). Knockouts (single-elimination, Bo5) also goes through
+ * fetchEliminationBracketData, driven by its own entries in the lookup
+ * tables below, exactly like Play-In. */
 export async function fetchWorldsBracketData(): Promise<BracketData | null> {
-  const activeStage = await fetchActiveStage(WORLDS_TOURNAMENT_ID);
+  const activeStage = await fetchWorldsActiveStageCached();
   if (!activeStage) return null;
 
   const stageName = activeStage.name ?? '';
@@ -1313,6 +1353,17 @@ const KNOWN_MATCH_CONNECTIONS: Record<string, string> = {
   '115660588583171790': '116299649498303884', // Upper Bracket Final winner -> Final, top slot
   '115660588583171794': '115660588583171798', // Lower Bracket Semifinal winner -> Lower Bracket Final, bottom slot
   '115660588583171798': '116299649498303884', // Lower Bracket Final winner -> Final, bottom slot
+  // Worlds Knockouts (2026) — 8-team single-elimination, Bo5, confirmed
+  // directly via a real [fetchActiveStage] log plus the user's own
+  // column breakdown. Quarterfinals (DK/BLG, KC/T1, TES/IG, GEN/LYON) feed
+  // Semifinals, which feed the Finals. Single elimination, so there is no
+  // entry in KNOWN_LOSER_CONNECTIONS for any of these — a loss ends the run.
+  '115660540726095097': '115660540726095121', // DK vs BLG winner -> Semifinal 1, top slot
+  '115660540726095103': '115660540726095121', // KC vs T1 winner -> Semifinal 1, bottom slot
+  '115660540726095109': '115660540726095127', // TES vs IG winner -> Semifinal 2, top slot
+  '115660540726095115': '115660540726095127', // GEN vs LYON winner -> Semifinal 2, bottom slot
+  '115660540726095121': '115660540726095133', // Semifinal 1 winner -> Finals, top slot
+  '115660540726095127': '115660540726095133', // Semifinal 2 winner -> Finals, bottom slot
 };
 
 /** Same discipline as KNOWN_MATCH_CONNECTIONS above, but for the LOSER's
@@ -1538,6 +1589,14 @@ const KNOWN_ROUND_LABELS: Record<string, string> = {
   '115660588583171790': 'Upper Bracket Final',
   '115660588583171794': 'Lower Bracket Semifinal',
   '115660588583171798': 'Lower Bracket Final',
+  // Worlds Knockouts — confirmed directly from the user's own column breakdown.
+  '115660540726095097': 'Quarterfinals',
+  '115660540726095103': 'Quarterfinals',
+  '115660540726095109': 'Quarterfinals',
+  '115660540726095115': 'Quarterfinals',
+  '115660540726095121': 'Semifinals',
+  '115660540726095127': 'Semifinals',
+  '115660540726095133': 'Finals',
   '116299649498303884': 'Final',
 };
 
@@ -1616,6 +1675,7 @@ const KNOWN_TEAM_ORDER_SWAPS = new Set<string>([
   // confirmed offset for the derivation to use.
   '115565671526403057', // CBLOL — Upper Bracket Quarterfinals (FUR's match): Round 1, no incoming connection at all
   '115565671526403063', // CBLOL — Upper Bracket Quarterfinals (PAIN's match): same, Round 1
+  '115660540726095103', // Worlds Knockouts — Quarterfinal KC vs T1: raw order is T1, KC; user listed KC on top. Round 1, no incoming connection
 ]);
 
 const CONNECTOR_TARGET_OFFSETS: Record<string, 'top' | 'bottom'> = {
@@ -1695,6 +1755,13 @@ const CONNECTOR_TARGET_OFFSETS: Record<string, 'top' | 'bottom'> = {
   '115660588583171790': 'top', // Upper Bracket Final -> Final, top slot
   '115660588583171794': 'bottom', // Lower Bracket Semifinal -> Lower Bracket Final, bottom slot
   '115660588583171798': 'bottom', // Lower Bracket Final -> Final, bottom slot
+  // Worlds Knockouts — confirmed directly from the user's own breakdown.
+  '115660540726095097': 'top', // DK vs BLG -> Semifinal 1, top slot
+  '115660540726095103': 'bottom', // KC vs T1 -> Semifinal 1, bottom slot
+  '115660540726095109': 'top', // TES vs IG -> Semifinal 2, top slot
+  '115660540726095115': 'bottom', // GEN vs LYON -> Semifinal 2, bottom slot
+  '115660540726095121': 'top', // Semifinal 1 -> Finals, top slot
+  '115660540726095127': 'bottom', // Semifinal 2 -> Finals, bottom slot
 };
 
 /** Same shape as CONNECTOR_TARGET_OFFSETS above, but for a match's LOSS
