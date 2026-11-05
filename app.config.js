@@ -26,7 +26,7 @@ module.exports = {
   expo: {
     name: IS_STORE ? 'My League Base' : 'League Base (UAT)',
     slug: 'league-base',
-    version: '1.0.0',
+    version: '1.1.0',
     orientation: 'portrait',
     userInterfaceStyle: 'automatic',
     newArchEnabled: true,
