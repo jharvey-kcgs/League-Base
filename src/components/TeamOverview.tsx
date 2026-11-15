@@ -8,6 +8,7 @@ import { AppText } from './AppText';
 import { Section } from './Section';
 import { FollowButton } from './FollowButton';
 import { LogoChip } from './LogoChip';
+import { OffseasonRosterNote } from './OffseasonRosterNote';
 
 /** The full "everything about one team" view — banner, sorted roster,
  * coaching staff, socials. Shared by HomeScreen
@@ -44,6 +45,7 @@ export function TeamOverview({ team }: { team: Team }) {
        * (they'd only show last season's finished data). Restore them from git
        * history when the new season starts. */}
       <Section title="Roster">
+        <OffseasonRosterNote />
         {players.map((p) => (
           <RosterRow key={p.username} name={p.username} role={p.role} colors={colors} />
         ))}
