@@ -9,9 +9,6 @@ import { AppHeader } from '../components/AppHeader';
 import { Section } from '../components/Section';
 import { FollowButton } from '../components/FollowButton';
 import { UpcomingGames } from '../components/UpcomingGames';
-import { RecentGames } from '../components/RecentGames';
-import { OverallStandings } from '../components/OverallStandings';
-import { BracketRounds } from '../components/BracketRounds';
 import { TeamTile } from '../components/TeamTile';
 import { useAsyncData } from '../hooks/useAsyncData';
 import { fetchScheduleForRegion, clearApiCache } from '../api/lolesportsClient';
@@ -27,12 +24,9 @@ export function RegionHomeScreen({ navigation, region }: Props) {
     .map((id) => ({ id, team: getTeam(id) }))
     .filter((t): t is { id: string; team: NonNullable<typeof t.team> } => Boolean(t.team))
     .filter((t) => t.team.active);
-  // Shared by Upcoming and Recent games below — one fetch, not two.
   const [isRefreshing, setIsRefreshing] = useState(false);
-  // Bumped on pull-to-refresh — added to schedule's deps below, and passed
-  // as OverallStandings' and BracketRounds' key so their own separate
-  // internal fetches re-run too, since both fetch independently of the
-  // schedule call here.
+  // Bumped on pull-to-refresh — added to schedule's deps below so it
+  // triggers a real refetch.
   const [refreshKey, setRefreshKey] = useState(0);
 
   const handleRefresh = async () => {
@@ -94,13 +88,10 @@ export function RegionHomeScreen({ navigation, region }: Props) {
           <UpcomingGames status={schedule.status} events={schedule.data} />
         </Section>
 
-        <Section title="Recent games">
-          <RecentGames status={schedule.status} events={schedule.data} />
-        </Section>
-
-        <OverallStandings key={`standings-${refreshKey}`} region={region} />
-
-        <BracketRounds key={`bracket-${refreshKey}`} region={region} />
+        {/* Off-season (2026 -> 2027): Recent games, Overall standings and the
+         * Playoffs bracket were removed — they'd only show a finished season.
+         * Re-add <RecentGames/>, <OverallStandings/> and <BracketRounds/> from
+         * git history when the new season starts. */}
 
         <Section title="Teams">
           <View style={styles.grid}>
