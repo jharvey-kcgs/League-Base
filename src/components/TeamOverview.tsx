@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Image, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
+import React from 'react';
+import { Image, ScrollView, StyleSheet, View } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
 import { ensureUIContrastOn, readableTextOn } from '../utils/colorContrast';
 import { laneFromRole, isSubstitute, compareByLane, laneShortLabel, resolveTeamColor, type Team } from '../types/team';
@@ -8,15 +8,9 @@ import { AppText } from './AppText';
 import { Section } from './Section';
 import { FollowButton } from './FollowButton';
 import { LogoChip } from './LogoChip';
-import { TeamRecord } from './TeamRecord';
-import { TeamUpcomingMatches } from './TeamUpcomingMatches';
-import { TeamRecentMatches } from './TeamRecentMatches';
-import { TeamVods } from './TeamVods';
-import { useAsyncData } from '../hooks/useAsyncData';
-import { fetchScheduleForTeam, clearApiCache } from '../api/lolesportsClient';
 
-/** The full "everything about one team" view — banner, record/matches/VOD
- * placeholders, sorted roster, coaching staff, socials. Shared by HomeScreen
+/** The full "everything about one team" view — banner, sorted roster,
+ * coaching staff, socials. Shared by HomeScreen
  * (favorite team) and TeamScreen (any team, reached via region browsing) so
  * fixes and polish only need to happen in one place. */
 export function TeamOverview({ team }: { team: Team }) {
@@ -34,37 +28,8 @@ export function TeamOverview({ team }: { team: Team }) {
   const players = team.roster.players.filter((p) => !isSubstitute(p.role)).sort(compareByLane);
   const substitutes = team.roster.players.filter((p) => isSubstitute(p.role));
 
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  // Bumped on pull-to-refresh, added to schedule's deps below so it
-  // triggers a real refetch, and passed as TeamVods' key so ITS separate
-  // internal fetch re-runs too — TeamVods has its own useAsyncData call,
-  // independent of the shared `schedule` below, so refreshing one doesn't
-  // automatically refresh the other without this.
-  const [refreshKey, setRefreshKey] = useState(0);
-
-  const handleRefresh = async () => {
-    setIsRefreshing(true);
-    // Pull-to-refresh should mean "go get this fresh, right now" — without
-    // clearing the cache first, a refetch this soon after the last one
-    // would almost always just hit the still-valid cached value and look
-    // like nothing happened.
-    await clearApiCache();
-    setRefreshKey((k) => k + 1);
-    setIsRefreshing(false);
-  };
-
-  // Shared by the Record and Matches sections below — one fetch, not two,
-  // since both need the same underlying schedule data.
-  const schedule = useAsyncData(
-    () => fetchScheduleForTeam(team.region, team.lolesportsSlug),
-    [team.region, team.lolesportsSlug, refreshKey]
-  );
-
   return (
-    <ScrollView
-      style={styles.container}
-      refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} tintColor={colors.accent} />}
-    >
+    <ScrollView style={styles.container}>
       <View style={[styles.banner, { backgroundColor: teamColor }]}>
         <LogoChip url={team.logoUrl} name={team.name} ringColor={rawColor} size={96} />
         <AppText weight="bold" style={[styles.bannerRegion, { color: bannerTextColor }]}>
@@ -75,18 +40,9 @@ export function TeamOverview({ team }: { team: Team }) {
         </AppText>
       </View>
 
-      <Section title="Record">
-        <TeamRecord status={schedule.status} events={schedule.data} teamCode={team.lolesportsSlug} />
-      </Section>
-
-      <Section title="Upcoming games">
-        <TeamUpcomingMatches status={schedule.status} events={schedule.data} teamCode={team.lolesportsSlug} />
-      </Section>
-
-      <Section title="Recent games">
-        <TeamRecentMatches status={schedule.status} events={schedule.data} teamCode={team.lolesportsSlug} />
-      </Section>
-
+      {/* Off-season: Record, Upcoming games, Recent games and VODs were removed
+       * (they'd only show last season's finished data). Restore them from git
+       * history when the new season starts. */}
       <Section title="Roster">
         {players.map((p) => (
           <RosterRow key={p.username} name={p.username} role={p.role} colors={colors} />
@@ -119,16 +75,6 @@ export function TeamOverview({ team }: { team: Team }) {
             <AppText style={[styles.coachRole, { color: colors.textMuted }]}>{c.role}</AppText>
           </View>
         ))}
-      </Section>
-
-      <Section title="VODs">
-        <TeamVods
-          key={refreshKey}
-          status={schedule.status}
-          events={schedule.data}
-          teamCode={team.lolesportsSlug}
-          region={team.region}
-        />
       </Section>
 
       <Section title="Follow">

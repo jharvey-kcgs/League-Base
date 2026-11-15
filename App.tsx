@@ -20,6 +20,7 @@ import { AboutScreen } from './src/screens/AboutScreen';
 import { FAQScreen } from './src/screens/FAQScreen';
 import { SearchScreen } from './src/screens/SearchScreen';
 import { TeamScreen } from './src/screens/TeamScreen';
+import { SeasonEndModal } from './src/components/SeasonEndModal';
 import type { RootStackParamList } from './src/navigation/types';
 
 // Drawer route name -> human-readable label, for the back-button title on
@@ -63,6 +64,7 @@ function RootNavigator() {
   }
 
   return (
+    <>
     <NavigationContainer
       ref={navigationRef}
       onStateChange={() => {
@@ -112,6 +114,9 @@ function RootNavigator() {
         <Stack.Screen name="TeamDetail" component={TeamScreen} options={{ title: 'Team' }} />
       </Stack.Navigator>
     </NavigationContainer>
+    {/* One-time end-of-season notice — remembers it was shown in AsyncStorage. */}
+    <SeasonEndModal />
+    </>
   );
 }
 
