@@ -10,6 +10,14 @@ import { FollowButton } from './FollowButton';
 import { LogoChip } from './LogoChip';
 import { OffseasonRosterNote } from './OffseasonRosterNote';
 
+/** teams.json roster entries can carry an optional off-season `status`:
+ * 'rumored' (reported, not yet announced by the team) or 'tbd' (open slot).
+ * Extended here, rather than in types/team.ts, so no shared type changes. */
+type RosterStatus = 'rumored' | 'tbd';
+type RosterEntry = Team['roster']['players'][number] & { status?: RosterStatus };
+
+const RUMOR_COLOR = '#F5A524';
+
 /** The full "everything about one team" view — banner, sorted roster,
  * coaching staff, socials. Shared by HomeScreen
  * (favorite team) and TeamScreen (any team, reached via region browsing) so
@@ -26,8 +34,9 @@ export function TeamOverview({ team }: { team: Team }) {
   // raw color, which doesn't match what's actually painted on this banner
   // when viewing a different team's page (reached via region browsing).
   const bannerTextColor = readableTextOn(teamColor);
-  const players = team.roster.players.filter((p) => !isSubstitute(p.role)).sort(compareByLane);
-  const substitutes = team.roster.players.filter((p) => isSubstitute(p.role));
+  const roster = team.roster.players as RosterEntry[];
+  const players = roster.filter((p) => !isSubstitute(p.role)).sort(compareByLane);
+  const substitutes = roster.filter((p) => isSubstitute(p.role));
 
   return (
     <ScrollView style={styles.container}>
@@ -47,7 +56,7 @@ export function TeamOverview({ team }: { team: Team }) {
       <Section title="Roster">
         <OffseasonRosterNote />
         {players.map((p) => (
-          <RosterRow key={p.username} name={p.username} role={p.role} colors={colors} />
+          <RosterRow key={`${p.role}-${p.username}`} name={p.username} role={p.role} status={p.status} colors={colors} />
         ))}
         {substitutes.length > 0 && (
           <>
@@ -55,7 +64,7 @@ export function TeamOverview({ team }: { team: Team }) {
               Substitutes
             </AppText>
             {substitutes.map((p) => (
-              <RosterRow key={p.username} name={p.username} role={p.role} colors={colors} />
+              <RosterRow key={`${p.role}-${p.username}`} name={p.username} role={p.role} status={p.status} colors={colors} />
             ))}
           </>
         )}
@@ -109,10 +118,12 @@ export function TeamOverview({ team }: { team: Team }) {
 function RosterRow({
   name,
   role,
+  status,
   colors,
 }: {
   name: string;
   role: string;
+  status?: RosterStatus;
   colors: ReturnType<typeof useTheme>['colors'];
 }) {
   const lane = laneFromRole(role);
@@ -120,13 +131,27 @@ function RosterRow({
     <View style={styles.rosterRow}>
       <LaneIcon role={role} size={26} />
       <View style={styles.rosterText}>
-        <AppText weight="bold" style={[styles.rosterName, { color: colors.text }]}>
+        <AppText
+          weight="bold"
+          style={[
+            styles.rosterName,
+            { color: status === 'tbd' ? colors.textMuted : colors.text },
+            status === 'tbd' && styles.tbdName,
+          ]}
+        >
           {name}
         </AppText>
         <AppText style={[styles.rosterRole, { color: colors.textMuted }]}>
           {lane ? laneShortLabel(lane) : role}
         </AppText>
       </View>
+      {status === 'rumored' ? (
+        <View style={styles.rumorTag}>
+          <AppText weight="bold" style={styles.rumorText}>
+            RUMOR
+          </AppText>
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -141,6 +166,9 @@ const styles = StyleSheet.create({
   rosterText: { flex: 1 },
   rosterName: { fontSize: 15 },
   rosterRole: { fontSize: 12, marginTop: 1 },
+  tbdName: { fontStyle: 'italic' },
+  rumorTag: { borderWidth: 1, borderColor: RUMOR_COLOR, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
+  rumorText: { fontSize: 10, letterSpacing: 0.5, color: RUMOR_COLOR },
   coachRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 6 },
   coachNameGroup: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   coachIcon: { width: 15, height: 15 },
