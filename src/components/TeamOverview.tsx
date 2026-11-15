@@ -16,6 +16,8 @@ import { OffseasonRosterNote } from './OffseasonRosterNote';
 type RosterStatus = 'rumored' | 'tbd';
 type RosterEntry = Team['roster']['players'][number] & { status?: RosterStatus };
 
+type RosterCoachEntry = Team['roster']['coaches'][number] & { status?: RosterStatus };
+
 const RUMOR_COLOR = '#F5A524';
 
 /** The full "everything about one team" view — banner, sorted roster,
@@ -71,15 +73,22 @@ export function TeamOverview({ team }: { team: Team }) {
       </Section>
 
       <Section title="Coaching staff">
-        {team.roster.coaches.map((c) => (
-          <View key={c.username} style={styles.coachRow}>
+        {(team.roster.coaches as RosterCoachEntry[]).map((c) => (
+          <View key={`${c.role}-${c.username}`} style={styles.coachRow}>
             <View style={styles.coachNameGroup}>
               <Image
                 source={require('../../assets/images/coach.png')}
                 style={[styles.coachIcon, { tintColor: colors.textMuted }]}
                 resizeMode="contain"
               />
-              <AppText weight="medium" style={[styles.coachName, { color: colors.text }]}>
+              <AppText
+                weight="medium"
+                style={[
+                  styles.coachName,
+                  { color: c.status === 'tbd' ? colors.textMuted : colors.text },
+                  c.status === 'tbd' && styles.tbdName,
+                ]}
+              >
                 {c.username}
               </AppText>
             </View>
