@@ -5,12 +5,9 @@ import { useTheme } from '../theme/ThemeContext';
 import { AppHeader } from '../components/AppHeader';
 import { Section } from '../components/Section';
 import { FollowButton } from '../components/FollowButton';
-import { UpcomingGames } from '../components/UpcomingGames';
-import { RecentGames } from '../components/RecentGames';
+import { WorldsChampion } from '../components/WorldsChampion';
 import { WorldsTeams } from '../components/WorldsTeams';
 import { WorldsBracketRounds } from '../components/BracketRounds';
-import { useAsyncData } from '../hooks/useAsyncData';
-import { fetchScheduleForWorlds } from '../api/lolesportsClient';
 import type { WorldsScreenProps } from '../navigation/types';
 
 /** Official LoL Esports socials — not any one region's, since this screen
@@ -29,14 +26,6 @@ const WORLDS_SOCIALS: Array<{ label: string; url: string }> = [
 
 export function WorldsScreen({ navigation }: WorldsScreenProps) {
   const { colors } = useTheme();
-  // One shared fetch for both sections below — RecentGames and
-  // UpcomingGames each filter the same full event list down to their own
-  // half internally (completed vs unstarted/inProgress), exactly the way
-  // every region's own screen already feeds both from one list, so there's
-  // no need to split this into two separate fetches or two separate
-  // useAsyncData calls.
-  const { status, data: scheduleEvents } = useAsyncData(() => fetchScheduleForWorlds(), []);
-
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       <AppHeader
@@ -46,20 +35,18 @@ export function WorldsScreen({ navigation }: WorldsScreenProps) {
         onOpenRegions={() => navigation.openDrawer()}
       />
       <ScrollView style={styles.container}>
+        {/* Off-season: the tournament is over, so the live Upcoming/Recent
+         * games sections are gone and the champion gets the spotlight. */}
+        <Section title="World champions">
+          <WorldsChampion onSelectTeam={(teamId) => navigation.navigate('TeamDetail', { teamId })} />
+        </Section>
+
         <Section title="World news">
           <View style={styles.followRow}>
             {WORLDS_SOCIALS.map((s) => (
               <FollowButton key={s.label} label={s.label} url={s.url} accent={colors.accent} />
             ))}
           </View>
-        </Section>
-
-        <Section title="Upcoming games">
-          <UpcomingGames status={status} events={scheduleEvents} />
-        </Section>
-
-        <Section title="Recent games">
-          <RecentGames status={status} events={scheduleEvents} />
         </Section>
 
         {/* Fires the same fetchActiveStage diagnostic log every other
