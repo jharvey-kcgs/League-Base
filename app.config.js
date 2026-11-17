@@ -22,11 +22,16 @@
 
 const IS_STORE = process.env.APP_VARIANT === 'production';
 
+// The user-facing version lives in version.json so it can be bumped by script
+// on every build (see scripts/bump-version.js and the build:* npm scripts).
+// The build NUMBER is separate — EAS increments that itself (autoIncrement).
+const { version: APP_VERSION } = require('./version.json');
+
 module.exports = {
   expo: {
     name: IS_STORE ? 'My League Base' : 'League Base (UAT)',
     slug: 'league-base',
-    version: '1.2.0',
+    version: APP_VERSION,
     orientation: 'portrait',
     userInterfaceStyle: 'automatic',
     newArchEnabled: true,
