@@ -6,11 +6,15 @@ import { AppText } from '../components/AppText';
 const FAQS: Array<{ q: string; a: string }> = [
   {
     q: 'How often is roster data updated?',
-    a: "Rosters are refreshed regularly during the season and more closely watched between splits, when trades happen. If a player looks out of date, that's the gap to check first.",
+    a: "Rosters are refreshed regularly during the season and watched most closely in the off-season, when moves happen. Each team's data carries a last-verified date. If a player looks out of date, that's the gap to check first.",
+  },
+  {
+    q: 'What do TBD and RUMOR mean on a roster?',
+    a: 'During the off-season, rosters are a work in progress. TBD means a spot has not been filled or confirmed yet. RUMOR means a player is widely reported for that spot but the team has not confirmed it. Both go away as teams finalize their lineups. Coaches and substitutes are filled in as they are confirmed.',
   },
   {
     q: "Why isn't my team showing up in its region?",
-    a: 'A couple of LPL teams get relegated out of the active split roster (12 of 14 teams compete in Split 3). Relegated teams are hidden from region browsing and the favorite-team picker until they\u2019re re-invited \u2014 they\u2019re not deleted, just not selectable while inactive.',
+    a: 'A team that isn\u2019t in its region\u2019s current league (relegated, or not yet re-invited) is hidden from region browsing and the favorite-team picker until it returns \u2014 it\u2019s not deleted, just not selectable while inactive.',
   },
   {
     q: 'How do I change my favorite team?',

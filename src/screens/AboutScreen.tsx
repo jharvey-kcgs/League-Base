@@ -26,6 +26,13 @@ const SECTIONS: Array<{ heading: string; body: string }> = [
       'Worlds page and updated as each region finishes.',
   },
   {
+    heading: 'Off-season',
+    body:
+      'Between seasons, rosters are a work in progress \u2014 changes are added as teams ' +
+      'confirm them, and spots that are not settled yet show as TBD or RUMOR. Match ' +
+      'schedules and results return when the new season starts.',
+  },
+  {
     heading: 'No account, no server',
     body:
       "Everything runs on your device. There's no login and no custom backend " +

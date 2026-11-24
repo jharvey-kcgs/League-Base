@@ -36,38 +36,40 @@ project depends on, and nothing it collects or transmits about you.
   (see [Color accessibility](#9-color-accessibility))
 - Real standings, schedules, rosters, and VODs for all 6 regions, sourced
   live from lolesports.com's own public data
-- Real Swiss and elimination brackets (Play-Ins, Playoffs, and LPL's
-  Regional Qualifier) across all six regions — hand-confirmed
-  connection data for each, since the raw API carries no structural
-  bracket information at all (see
-  [The Bracket system](#8-the-bracket-system))
-- A Worlds screen listing each region's qualified teams in seed order
-  (see [The Worlds screen](#the-worlds-screen))
-- 58 teams' worth of roster data, carefully researched and cross-verified
-  against real sources — not guessed (see [Team data](#7-team-data-teamsjson))
+- A genuine Swiss-format bracket view for LCP — round-by-round, correctly
+  grouped by each team's actual record, not just a static list
+  (see [The Bracket system](#8-the-bracket-system))
+- 59 teams' worth of roster data across all 6 regions, with explicit TBD /
+  RUMOR markers for off-season spots that aren't confirmed yet
+  (see [Team data](#7-team-data-teamsjson))
+- A Worlds screen: Play-Ins, Swiss and Knockouts brackets, a qualified-teams
+  list that auto-marks knockout losers as eliminated, and a champion
+  spotlight (BLG, Worlds 2026)
+- A one-time season-end pop-up and an off-season roster note (see
+  [Off-season mode](#off-season-mode))
 - A crash-safety net (see [Section 11](#11-testflight-release-readiness)) so an
   unexpected edge case shows a friendly recoverable screen, not a hard
   crash
 
-**Where this stands right now:** the app has shipped through TestFlight
-and is in active use during the live LCK/LPL/LEC/CBLOL split, with the
-elimination bracket system (above) built and refined against real,
-in-progress tournament data as each region's Playoffs actually unfolded.
-The project completed a full Expo SDK upgrade (54 → 57, including the
-New Architecture requirement introduced at SDK 55) on 2026-08-28 — see
-[Gotcha #3](#gotcha-3-expo-go-only-ever-supports-the-latest-sdk--plan-for-this-before-it-happens-to-you)
-for the real experience of that. What's still genuinely open is tracked
-in [Section 12](#12-roadmap-genuinely-open-not-yet-built).
+**Where this stands right now:** the app is in **off-season mode** (Worlds
+2026 finished with BLG beating Gen.G 3-1; see [Off-season mode](#off-season-mode)).
+It currently targets **Expo SDK 58** (React Native 0.88, React 19) — older
+SDK 54 references in Section 1 and the gotchas below are kept as history
+and haven't all been re-verified for 58. Every screen and region was
+individually clicked through and tested in both light and dark mode during
+the season. The app itself is done in every way that matters — what's left
+is entirely TestFlight logistics (Apple Developer Program enrollment,
+`eas build`, TestFlight distribution), tracked in
+[Section 11](#11-testflight-release-readiness).
 
 ---
 
 ## 1. Prerequisites
 
-- **Node.js 22.13.x or newer.** SDK 57's documented minimum — a real jump
-  from SDK 54's 20.19.4 requirement, worth checking before anything else
-  if this project is ever picked back up after a break. Check with
-  `node -v`, and update via [nodejs.org](https://nodejs.org) or
-  `nvm install 22.13.0` if you're on nvm-windows.
+- **Node.js 20 LTS — `20.19.4` or newer.** That's the minimum Expo SDK 54
+  requires; anything below it will fail to start the dev server. Check
+  with `node -v`, and update via [nodejs.org](https://nodejs.org) or
+  `nvm install 20.19.4` if you're on nvm-windows.
 - [VS Code](https://code.visualstudio.com) (or any editor)
 - The **Expo Go** app on your phone, from the App Store / Play Store — lets
   you preview the app live during development with no build step. See
@@ -166,7 +168,7 @@ assets/
                                      Icons section)
   fonts/                           Rajdhani-Regular.ttf + Rajdhani-Bold.ttf
                                     — active, see Fonts section
-  data/teams.json                  58 teams across 6 regions: colors,
+  data/teams.json                  59 teams across 6 regions: colors,
                                     logos, socials, full rosters + coaches
                                     — see Team data section
 
@@ -182,16 +184,16 @@ src/
     OnboardingScreen.tsx            First-launch team picker, grouped by region
     HomeScreen.tsx                  Cog / title / hamburger header + favorite
                                      team's overview (renders TeamOverview)
-    RegionHomeScreen.tsx            Region News, Upcoming/Recent Games,
-                                     Overall Standings, Bracket (when
-                                     active), and the team grid — all real
-                                     data
+    RegionHomeScreen.tsx            Off-season layout: Region News, Upcoming
+                                     Games, and the team grid. (Recent
+                                     Games, Overall Standings and Bracket
+                                     were removed from this screen for the
+                                     off-season — see Off-season mode.)
+    WorldsScreen.tsx                Worlds: champion spotlight (WorldsChampion),
+                                     Play-Ins / Swiss / Knockouts brackets,
+                                     and the qualified Teams list
     TeamScreen.tsx                  Any team's overview — same TeamOverview
                                      HomeScreen uses, reached via RegionStack
-    WorldsScreen.tsx                World News (official LoL Esports
-                                      socials), Upcoming/Recent Games
-                                      (empty until Worlds matches exist),
-                                      and Teams grouped by region
     SettingsScreen.tsx              Nested menu: Profile, Theme, About, FAQ
     ProfileSettingsScreen.tsx       Re-run the team picker to change favorite
     ThemeSettingsScreen.tsx         Light / dark / match-device
@@ -216,9 +218,22 @@ src/
                                       native header) so it isn't subject to
                                       OS-drawn pill/circle chrome around
                                       headerLeft/headerRight
-    TeamOverview.tsx                 The full team-detail view (banner,
-                                     record/matches/roster/coaches/socials)
-                                     — shared by HomeScreen and TeamScreen
+    TeamOverview.tsx                 The team-detail view (banner, roster,
+                                     coaches, socials) — shared by
+                                     HomeScreen and TeamScreen. Shows TBD /
+                                     RUMOR roster markers and the off-season
+                                     note. Record, Upcoming, Recent and VODs
+                                     are no longer rendered here (off-season)
+    OffseasonRosterNote.tsx          "Rosters are a work in progress" note at
+                                     the top of every Roster section
+    SeasonEndModal.tsx               One-time "The 2026 Season Has Ended"
+                                     pop-up (AsyncStorage key
+                                     leagueBase.seasonEnd2026Seen)
+    WorldsChampion.tsx               Champion spotlight card, driven by
+                                     src/data/worldsChampion.ts
+    WorldsTeams.tsx                  Worlds qualified-teams list by region;
+                                     auto-marks knockout losers ELIMINATED
+                                     (fetchWorldsKnockoutLosers)
     TeamTile.tsx                     Logo-chip + name tile — shared by
                                      TeamPickerGrid and RegionHomeScreen
     TeamPickerGrid.tsx               Team-selection grid (all regions),
@@ -241,10 +256,6 @@ src/
                                        RegionHomeScreen)
     RecentGames.tsx                   Region's last 5 completed matches,
                                        same shared-fetch pattern
-    WorldsTeams.tsx                   Worlds Teams section — regions in
-                                        fixed order, teams by seed, a TBD row
-                                        for a seed with no team yet; reads
-                                        worldsQualifiers.ts
     OverallStandings.tsx              Region standings table, including a
                                        lock icon once a Swiss-stage team
                                        hits the confirmed qualify
@@ -259,6 +270,8 @@ src/
                                         correctly grouped by record (not
                                         just round number), horizontally
                                         scrollable — see The Bracket system
+    (The four Team* components below are kept for the new season but are
+     NOT rendered on the Team screen during the off-season.)
     TeamRecord.tsx                    Team W/L record — takes already-
                                        fetched schedule events as props
                                        (shares one fetch with the two below,
@@ -283,13 +296,14 @@ src/
                                       header title style
 
   data/
+    worldsQualifiers.ts              Hand-maintained Worlds qualifier list
+                                      (+ WORLDS_CODE_TO_TEAM_ID)
+    worldsChampion.ts                Champion spotlight data (team, year,
+                                      score, runner-up, players)
     teamsStore.ts                    Reads teams.json, exposes lookups by
                                       id/region
     favoriteTeam.ts                  AsyncStorage: favoriteTeamId + theme
                                       mode preference
-    worldsQualifiers.ts              Hand-maintained Worlds qualifier list:
-                                       per region, each team's id and seed
-                                       (either can be unknown independently)
 
   api/
     lolesportsClient.ts               lolesports.com unofficial API —
@@ -328,6 +342,10 @@ src/
   types/team.ts                      TypeScript types matching teams.json's
                                       shape, plus lane-role helpers
 ```
+
+Project root also has `version.json` (the user-facing app version, read by
+`app.config.js`) and `scripts/bump-version.js` — see
+[Versioning](#versioning-and-build-commands) in Section 11.
 
 ### Where to make common changes
 
@@ -402,14 +420,20 @@ silently stay on the system font even with everything else correct.
 
 ## 7. Team data & teams.json
 
-`assets/data/teams.json` holds **58 teams across 6 regions** (LCS, LEC,
+`assets/data/teams.json` holds **59 teams across 6 regions** (LCS, LEC,
 LCK, LPL, CBLOL, LCP), plus one entry per region (display name, logo,
-socials, `teamIds`). Every team's roster — starters, substitutes, and
-coaching staff — was researched and cross-verified against multiple real
-sources (official team announcements, Liquipedia, region-specific stat
-trackers), not assumed. Rosters shift constantly during an active season,
-so treat `roster.lastVerified` as exactly what it says — a point-in-time
-snapshot, not a guarantee it's still current months later.
+socials, `teamIds`). Rosters shift constantly, so treat `roster.lastVerified`
+as exactly what it says — a point-in-time snapshot, not a guarantee it's
+still current months later.
+
+**Off-season (Nov 2026 onward):** every team's roster was reset to five
+starters with coaches as TBD and no substitutes, then filled in as teams
+announce. Starters come from lists supplied by the project owner (spot-
+checked against public roster trackers where reachable, not independently
+verified for every team); `lastVerified` is bumped on each team as its
+lineup is finalized. Spots that aren't settled carry a `status` marker
+(see schema below). OpTic Gaming (`opt`) was added to LCS for 2027;
+Dignitas (`dig`) is kept but `active: false`.
 
 **Schema, per team:**
 ```
@@ -428,10 +452,18 @@ snapshot, not a guarantee it's still current months later.
   "active": true,
   "roster": {
     "lastVerified": "YYYY-MM-DD",
-    "players": [{ "username", "role" }],   // role: "Top" | "Jungle" |
+    "players": [{ "username", "role", "status"? }],
+                                           // role: "Top" | "Jungle" |
                                               "Mid" | "ADC" | "Support" |
                                               "<Lane> Substitute"
-    "coaches": [{ "username", "role" }]     // "Head Coach" | "Coach" |
+                                           // status (optional): "tbd" =
+                                              slot not filled/confirmed
+                                              (username "TBD"); "rumored"
+                                              = reported but unconfirmed
+                                              (shows a RUMOR tag). Remove
+                                              the field once confirmed.
+    "coaches": [{ "username", "role", "status"? }]
+                                           // "Head Coach" | "Coach" |
                                               "Assistant Coach" |
                                               "Strategic Coach" |
                                               "Positional Coach"
@@ -513,191 +545,37 @@ tracking, corrupting round assignment. `fetchBracketData` filters these
 out explicitly now, but it's the kind of thing that could resurface if
 this logic is ever copied elsewhere.
 
-**`fetchBracketData` (the function described above) is Swiss-specific
-only** — it only attempts the Swiss-shaped record-grouping math when the
-*active* stage's real name is literally `"Swiss"`. Every other bracket
-shape (Play-Ins, Playoffs) goes through a completely separate function,
-`fetchEliminationBracketData`, covered in full below. `BracketRounds`
-itself renders both — it disappears entirely (no section at all)
-whenever neither path has anything to show for the active stage, the
-same honest "nothing to show yet" behavior either way, rather than a
-title with an empty or wrong body underneath it.
+**Deliberately scoped to Swiss stages only for actual rendering** —
+`fetchBracketData` only attempts the Swiss-shaped math when the *active*
+stage's real name is literally `"Swiss"`; for anything else (Play-Ins,
+Playoffs) it correctly reports the real stage name but returns zero
+rounds on purpose, rather than force Swiss-specific record-grouping math
+onto a fundamentally different bracket shape. `BracketRounds` disappears
+entirely (no section at all) whenever there's nothing built for the
+active stage — the same honest "nothing to show yet" behavior as when
+there's no active bracket at all, rather than a title with an empty or
+wrong body underneath it.
 
-### Elimination brackets (Play-Ins, Playoffs) — `fetchEliminationBracketData`
-
-Built and live for the Play-Ins and/or Playoffs stages of **every
-region** — LCS, LEC, LCK, LPL, CBLOL, and LCP — plus LPL's separate
-Regional Qualifier, the small bracket that filled its last two Worlds
-seeds. This was a genuinely harder problem than Swiss,
-worth documenting properly given how many real corrections it took to
-get right — future-you (or anyone else building the next region's
-bracket) should read this before assuming a new one will "just work."
-
-**The core problem, and why it can't be solved from the API alone:**
-`previousMatchIds` — the field that would tell you which match feeds
-into which — comes back completely empty for every Play-Ins and Playoffs
-match, for every region, always. There is no structural connectivity
-data in the raw response at all. Every single connection (who plays
-whom next, who drops down on a loss, which slot they land in) has to be
-hand-confirmed from the real, official bracket page and encoded directly
-into `lolesportsClient.ts` as static lookup tables, keyed by the raw
-match ID. This is fundamentally different from Swiss, where the shape
-itself falls out of a mathematical property (record-grouping); here,
-the *shape itself* is unknowable from data and has to be told to the
-code by a person who looked at the real page.
-
-**The eight lookup tables that make this work, all in
-`lolesportsClient.ts`, all keyed by raw match ID:**
-
-| Table | What it encodes |
-|---|---|
-| `KNOWN_MATCH_CONNECTIONS` | A match's **winner** advances to a specific destination match. Draws a connector line by default. |
-| `KNOWN_LOSER_CONNECTIONS` | A match's **loser** drops to a specific destination (genuine double-elimination only — a region with no lower bracket, or a match where losing means elimination, has no entry here for that match). Never draws a line, regardless of anything else. |
-| `KNOWN_ROUND_LABELS` | The real, confirmed stage name for a match (e.g. `"Upper Bracket Semifinals"`) — overrides the generic `"ROUND N"` fallback. Needed whenever two differently-named stages land in the same computed column and would otherwise be visually indistinguishable. |
-| `KNOWN_COLUMN_OVERRIDES` | Explicitly forces a match into a specific column, overriding the automatic "1 + max(source columns)" computation. Needed when the real bracket deliberately delays a stage further right than its data dependency alone implies (LCK's Upper Bracket Finals, held back so the Lower Bracket visually "catches up" first — LPL and LEC's shapes both resolved correctly with zero overrides, so don't assume every region needs one). |
-| `SUPPRESSED_CONNECTOR_LINES` | A win-path connection that's real (used for round placement and centering) but the official page draws no line for it anyway. First needed for LCK's Round 1 -> Upper Bracket Round 2, which genuinely has no line on the real page despite the winner clearly advancing. |
-| `CONNECTOR_TARGET_OFFSETS` | For a **win-path** connection: which slot of the destination (top or bottom) the winner lands in. Makes the connector line land on that slot instead of the card's vertical center, and — see below — is also what lets team order be derived automatically. |
-| `LOSER_CONNECTOR_TARGET_OFFSETS` | The same thing for a match's **loss-path** connection. Needs its own table, not a shared one: a single match's winner and loser routinely go to different slots of different destinations (an Upper Bracket Finals winner takes the top slot of Finals while its loser takes the top slot of Lower Bracket Finals), so one value per source id can't hold both. A loss slot is usually derived as "the opposite of whichever slot the other, win-path source of that same destination takes"; where there's no such sibling, it has to be confirmed directly. |
-| `KNOWN_TEAM_ORDER_SWAPS` | Last-resort manual override for team order, for matches the automatic derivation below can't place at all. Used to hold 20+ entries, each requiring someone to spot a wrong order on the real site and report it; it now holds two (both CBLOL Round 1 matches). |
-
-**Team order inside a match is derived, not hand-swapped.** The raw team
-array's `[0]`/`[1]` order does not reliably match the official page's
-top/bottom order — confirmed repeatedly, in both directions. For most of
-this project that was patched one match at a time, which doesn't scale
-once several regions are live at once. Now `fetchEliminationBracketData`
-places each team by where it came from: for every connection feeding a
-match, it finds who actually won (win-path) or lost (loss-path) the
-source match and puts that team in the slot the offset tables say the
-connection feeds. If only one slot can be derived, the other team takes
-the remaining slot by elimination — this is how a bye team (seeded
-straight into a later round, with no incoming connection of its own)
-lands in the right place. It matches teams by real ID, never by raw array
-position.
-
-What this needs from whoever builds the next bracket: an offset for every
-win-path connection, and for every loss-path connection whose destination
-has a win-path source to take the other slot. What it can't derive:
-Round 1 matches (nothing feeds them), and a match fed *only* by loss-path
-connections with no confirmed offset (e.g. a Lower Bracket Round 1 where
-both teams just dropped from Round 1). Those fall back to raw order, then
-to `KNOWN_TEAM_ORDER_SWAPS`. Several such matches (LCS's Lower Bracket
-Round 1, LCK's Lower Bracket Round 1, LCP's Upper Bracket Semifinals)
-were checked against the real page and looked correct in raw order
-without an entry — worth re-checking whenever a new bracket goes live,
-since that's the raw order happening to be right, not something the
-code guarantees.
-
-**Column placement is otherwise fully automatic**, via a fixed-point
-loop: a match with no confirmed predecessor starts at column 1; anything
-else lands one column after the latest of its own confirmed sources
-(via either table above), repeating until every match settles. Only
-override this when the real page's layout is confirmed to actually
-diverge from that computation — most brackets built so far didn't need
-one at all.
-
-**Real, hard-won lessons — worth reading before building the next
-region's bracket, not just skimming:**
-
-- **Sequential raw match ID order is not a reliable way to guess which
-  ID is which stage**, even though it looked that way at first (it
-  worked, by coincidence, for several of LCP's Playoffs stages). LCK's
-  build initially guessed match `...841619` was "Lower Bracket Round 2"
-  based on its position in the ID sequence — it was actually **Upper
-  Bracket Finals**, confirmed only once GEN's real win started showing
-  up there. When inference is genuinely unconfirmed, say so explicitly
-  rather than present a guess as settled — and expect to revisit it once
-  real results arrive.
-- **A completed match's raw team array can itself confirm or disprove an
-  ID mapping.** LCK's `...841613` was confirmed as the real Lower
-  Bracket Round 1 not by inference but because it showed up populated
-  with exactly the two real Round 1 losers, independent of any
-  positional guess.
-- **When your own inference is wrong more than once on the same
-  bracket, stop guessing and ask the person to check the real page
-  directly** — browser devtools' Network tab, filtered to the main
-  document/RSC payload rather than XHR, can reveal the same underlying
-  match IDs a site's own frontend renders from, if a `getStandings`-style
-  request isn't directly visible (worth trying `getStandings` first,
-  which is what this app's own client calls, before assuming a page
-  doesn't expose the data it's rendering from).
-- **A "who drops down where" rule can be genuinely undeterminable from
-  data alone, even once you know the correct destination IDs.** LCK's
-  rule — the lower-seeded Upper Bracket Round 2 loser drops to Lower
-  Bracket Round 2, the higher-seeded one skips ahead to Round 3 — can't
-  be resolved until *both* UBR2 matches have actually completed, since
-  seeding is an external fact, not something derivable from who beat
-  whom. The right move is to leave that specific connection absent
-  until it's genuinely knowable, not guess at a plausible-seeming
-  destination.
-- **Centering a match on "all of its sources" is wrong in general.** The
-  correct rule, confirmed against real page layouts on two separate
-  occasions: a loss-path source counts toward a destination's centering
-  *only if* it has no separate win-path destination of its own — a
-  source with both (its winner going one place, its loser going
-  another) has its own position already determined by that other
-  relationship, and pulling the destination toward it too reintroduces
-  visual overlap bugs that were specifically fixed once already.
-- **An unconfirmed source match must never block a downstream match's
-  own round resolution.** A match excluded from rendering (fully TBD,
-  no confirmed label, nothing else feeding it) can still appear as an
-  entry in a connection table without breaking anything — *unless* the
-  round-assignment loop naively waits for every listed source to
-  resolve regardless of whether that source is actually being rendered.
-  This produced a real React "duplicate key" warning once (two
-  unrelated matches both silently collapsing into a `roundNumber:
-  undefined` group) — fixed by filtering each match's source list down
-  to only sources that are themselves confirmed/rendered.
-- **Every one of the above is diagnosed and fixed with the same
-  discipline as Gotcha #10** — a real, current diagnostic log or a
-  direct, confirmed observation from the actual official page, never a
-  second guess stacked on an unconfirmed first one. Every genuinely
-  unconfirmed inference in the tables above is commented as such
-  in-place, not left to look more certain than it is.
-
-### The Worlds screen
-
-A Drawer entry between **My Team** and the region list, always visible —
-deliberately no season-gating logic; a quiet, mostly empty screen in the
-off-season was judged a smaller problem than someone not finding it.
-Sections:
-
-- **World News** — outbound links to the official LoL Esports accounts on
-  X, YouTube, Twitch, and Instagram (`FollowButton`, the same pattern as
-  Region News). The handles came from official sources, not guesses —
-  worth a tap-through of all four before release, since a dead link
-  here would be visible.
-- **Upcoming / Recent Games** — currently fed an empty events array on
-  purpose. No Worlds schedule fetch exists yet because there were no real
-  Worlds matches to build or verify one against; each component's own
-  empty-state message is accurate as-is, and only the data source feeding
-  them needs to change later.
-- **Teams** — each region's qualified teams, regions in fixed order (LCS,
-  LEC, LCK, LPL, CBLOL, LCP), teams by seed. Tapping a team opens its page.
-
-**The Teams data is hand-maintained, not live.** An earlier version of
-this roadmap assumed it could be read from the tournament data. It can't:
-the API doesn't expose a clean per-region qualifier list, so
-`src/data/worldsQualifiers.ts` is transcribed from lolesports.com's
-official Worlds overview page plus confirmed regional results, and has to
-be edited whenever a region's seeds change. Each entry has two fields
-that can be unknown **independently**: `teamId` (null = the slot exists
-but no team has earned it) and `seed` (null = the team has qualified but
-its final seed isn't settled). That distinction is real — LCK was once
-"four known teams, order unsettled," and LPL was once "two known teams,
-two empty slots" — and the component renders them differently (a dash
-instead of a number, versus a "TBD" row). A region with nothing confirmed
-shows a "Determined by [Region] Playoffs" placeholder.
-
-Status as of 2026-10-05: LCS, LEC, LCK, LPL, and LCP are fully seeded;
-CBLOL's LOS and FUR are confirmed but unordered until its Finals.
-
-**Format, so nobody assumes otherwise:** Worlds 2026 is a Play-In (4
-teams, double-elimination, best-of-five) → Swiss stage (16 teams, five
-rounds, three wins to advance) → Knockout (8 teams, single-elimination).
-It is *not* a group stage. The Play-In and Knockout will follow the
-exact process above (real diagnostic log, hand-confirmed IDs and slots,
-never a guess); the Swiss stage should be able to reuse the existing
-Swiss renderer, but that's unverified until real Worlds data exists.
+**What's NOT built yet**: the true visual elimination bracket (Play-Ins,
+a single-elim tree, and Playoffs, a double-elim tree with separate
+Upper/Lower Bracket paths — confirmed via real screenshots of both to be
+genuinely different shapes, not just "more rounds"). Every Play-Ins and
+Playoffs match seen so far is still `TBD vs TBD` with an empty
+`previousMatchIds`, so the real connectivity mechanism for either is
+genuinely unconfirmed. `BracketRound`/`BracketRounds` were built
+generically on purpose (nothing Swiss-specific baked into the component
+itself) so a real tree-shaped renderer can reuse this same component
+later — build against real data once each stage actually seeds real
+teams, not a guess, same reasoning as everything else in this project.
+**Update (Nov 2026):** the Worlds screen now exists and renders Play-Ins,
+Swiss and the Knockouts tree (a connected single-elimination bracket,
+with the semifinals centered between their feeder quarterfinals). The
+hand-confirmed lookup tables in `lolesportsClient.ts`
+(`KNOWN_MATCH_CONNECTIONS`, `KNOWN_ROUND_LABELS`, `KNOWN_COLUMN_OVERRIDES`,
+connector offsets, etc.) now hold **only Worlds 2026 entries** — all 2026
+regional entries were removed because each new season brings new match
+IDs. When a region's playoffs/bracket start again, log the stage data
+(`fetchActiveStage`), confirm the connections by hand, and add entries.
 
 ---
 
@@ -767,70 +645,16 @@ newest on npm, which can silently mismatch and cause native-module errors
 that are confusing to trace back. Reserve plain `npm install` for the
 initial `npm install` with no arguments (Section 2).
 
-### Gotcha #3: Expo Go only ever supports the latest SDK — plan for this before it happens to you
+### Gotcha #3: Expo Go SDK mismatches
 
-This project is on **SDK 57** as of 2026-08-28, having genuinely lived through
-the failure mode this gotcha warns about: Expo Go auto-updates to whatever
-the newest SDK release is, with no way to keep an older version installed
-on a physical iOS device. When this project was still on SDK 54 and Expo
-Go silently updated to 57, Expo Go simply refused to open the project at
-all — "Project is incompatible with this version of Expo Go."
-
-**The actual upgrade path taken, in case this project (or a future one) is
-ever several SDK versions behind again:**
-
-1. **Migrate to the New Architecture first, while still on the old SDK** —
-   don't try to bundle this with the SDK bump itself. SDK 55 made the New
-   Architecture mandatory (SDK 54 was the last version supporting the Old
-   Architecture); Expo's own guidance is explicit about doing this as a
-   separate, earlier step. In this project's case there was nothing to
-   actually migrate — `newArchEnabled: true` was already set, and
-   `react-native-worklets` was already correctly wired for Reanimated 4 —
-   but that's not something to assume without checking `expo-doctor` and
-   the project's actual `app.config.js` first.
-2. **Upgrade one SDK version at a time** (54→55→56→57), not straight to
-   latest — `npx expo install expo@latest --fix` will happily jump past
-   several versions at once with no warning, confirmed the hard way
-   during this exact upgrade (it silently landed on SDK 57 when 55 was
-   the actual target; caught only by checking the resolved version
-   afterward). Pin explicitly instead: `npx expo install expo@"~55.0.0" --fix`.
-3. **Commit after each successful version bump.** If a later step needs
-   more work than expected, this keeps a clean rollback point instead of
-   several stacked, entangled changes.
-4. **Real device testing gets genuinely harder while mid-upgrade.**
-   Expo Go on a physical iOS device only ever runs the *one* SDK version
-   it's currently built for — there's no way to have "SDK 55 Expo Go" and
-   "SDK 57 Expo Go" both installed side by side. For a project sitting on
-   an intermediate SDK version with no matching Expo Go available,
-   `sign.expo.dev` can produce a real, working build for that exact SDK
-   version, signed with a free Apple ID (no paid developer account
-   needed just for this) — but the resulting certificate expires after
-   about a week. Given SDK 56 and 57 are both officially described as
-   low-risk, non-breaking upgrades, this project's own upgrade relied on
-   `expo-doctor` and `tsc --noEmit` alone for those two intermediate
-   steps, saving the real device test for landing on SDK 57 itself
-   (where Expo Go just works again with zero extra setup) — a reasonable
-   trade for a low-risk step, not a default to reach for on every future
-   upgrade regardless of risk.
-5. [Anthropic's `expo-upgrade` skill](https://github.com/expo/skills) (for
-   Claude Code) automated most of the actual package-version and
-   config-file work across these steps. One install snag worth knowing:
-   `/plugin marketplace add expo/skills` fails outright if Git doesn't yet
-   trust GitHub's SSH host key (fix: `ssh -T git@github.com` once,
-   answering "yes" to the fingerprint prompt) — and even past that, the
-   default SSH-based clone fails again for anyone without a personal
-   SSH key registered on GitHub, since marketplace repos are public and
-   read-only and never actually needed SSH authentication in the first
-   place (fix: add the marketplace via its explicit HTTPS URL instead,
-   `/plugin marketplace add https://github.com/expo/skills.git`). A
-   further snag specific to this one repository: it has a git submodule
-   pointing to a private Expo-internal repo, which breaks the marketplace
-   clone entirely regardless of HTTPS vs SSH — worked around by cloning
-   with `--no-recurse-submodules` and copying just the skill's own folder
-   (found under `expo-upgrade/`, not `upgrading-expo/` as the published
-   plugin name might suggest) directly into `~/.claude/skills/`. The
-   broken submodule (an internal eval harness) isn't referenced by the
-   skill itself, so skipping it lost nothing.
+Expo Go's build in the App Store / Play Store sometimes lags behind
+Expo's latest SDK release. This project targets **SDK 54** specifically
+(not 57, the newest one) because that's what the *published* Expo Go app
+actually supports on a physical phone right now — SDK 57 currently only
+runs via `eas go` or simulators. If `create-expo-app` or `expo upgrade`
+ever bumps this project to SDK 57, physical-device Expo Go testing will
+break with an "incompatible" error; step back down with
+`npx expo install expo@"~54.0.0" --fix`.
 
 ### Gotcha #4: ERESOLVE peer dependency errors
 
@@ -871,7 +695,7 @@ already named correctly — comes up if you split new files out of them.
 ### Gotcha #7: Reanimated 4 needs `react-native-worklets`, not just `react-native-reanimated/plugin`
 
 Hit this bringing in the Drawer (`@react-navigation/drawer` depends on
-Reanimated). SDK 54+ installs Reanimated 4, which requires the New
+Reanimated). SDK 54 installs Reanimated 4, which requires the New
 Architecture (already on — see `app.config.js`'s `newArchEnabled`) and moved its
 Babel plugin into a separate `react-native-worklets` package. Symptom:
 
@@ -1041,14 +865,13 @@ Current status, as of this writing:
   moved from static `app.json` to `app.config.js`, which branches on the
   `APP_VARIANT` env var (see that file's own header comment for the full
   reasoning):
-  - Default (a plain `eas build`, no `--profile` flag — unchanged from
-    before this split existed): **UAT**, name "League Base (UAT)",
-    bundle identifier `com.JHarvey.LeagueBase`. All regular TestFlight
-    builds go here, always.
-  - `eas build --profile store` (new, explicit, sets `APP_VARIANT=
-    production` via `eas.json`): **Store**, name "League Base", bundle
-    identifier `com.JHarvey.LeagueBaseStore`. Only ever used for a real
-    App Store submission — not something to run casually.
+  - Default / UAT (`eas build --profile production`, no `APP_VARIANT`):
+    name "League Base (UAT)", bundle identifier `com.JHarvey.LeagueBase`.
+    All regular TestFlight builds go here, always.
+  - `eas build --profile store` (explicit, sets `APP_VARIANT=production`
+    via `eas.json`): **Store**, name "My League Base", bundle identifier
+    `com.JHarvey.LeagueBaseStore`. Only ever used for a real App Store
+    submission — not something to run casually.
   - Both bundle identifiers are permanent once Apple registers them, so
     neither was picked casually. One EAS project (one `projectId`)
     produces builds for both — this is Expo's own recommended pattern
@@ -1077,6 +900,29 @@ Current status, as of this writing:
   requires a short first-build review from Apple, typically 24–48 hours,
   not instant).
 
+### Versioning and build commands
+
+`eas.json` uses `appVersionSource: "remote"` with `autoIncrement` on the
+`production` and `store` profiles, so **EAS increments the build number
+(iOS buildNumber / Android versionCode) itself**. EAS cannot auto-increment
+the user-facing `version` under remote versioning, so that lives in
+`version.json` and is bumped by `scripts/bump-version.js`; `app.config.js`
+reads it. The version only ever goes up across both UAT and Store builds
+(each App Store version must be higher than the last).
+
+```
+npm run build:uat            # bump patch + UAT build, iOS and Android
+npm run build:uat:ios        # (or :android) one platform only
+npm run build:store          # bump patch + Store build (same variants)
+npm run bump | bump:minor | bump:major     # bump without building
+node scripts/bump-version.js 2.0.0         # set an exact version
+```
+Running iOS and Android separately bumps twice (different versions per
+platform); use the combined command for one shared version. Bumping before a
+build with a plain `eas build` is not automatic — use the npm scripts, and
+commit `version.json` afterwards. The About screen shows the live version and
+whether it's a UAT or Release build.
+
 App Privacy is worth knowing goes in easily here: **this app collects no
 user data at all.** No accounts, no analytics, no backend. The only thing
 stored is a favorite-team/theme preference, saved locally on-device via
@@ -1087,13 +933,51 @@ category but no longer literally nothing.)
 
 ---
 
+## Off-season mode
+
+Added after Worlds 2026 (Nov 2026). What changed and why: with no matches
+until the Winter split, screens that only make sense in-season were
+trimmed, and the app tells users rosters are still moving.
+
+- **Team screen:** Record, Upcoming, Recent and VODs removed; roster shows
+  TBD / RUMOR markers; `OffseasonRosterNote` sits above the roster.
+- **Region screen:** only Region News, Upcoming Games and Teams.
+- **Worlds screen:** keeps the finished 2026 bracket and Teams list, adds
+  the champion spotlight, drops Upcoming/Recent games.
+- **First launch:** `SeasonEndModal` shows once (AsyncStorage flag).
+- **Data:** see Section 7 (off-season roster reset) and Section 8 (lookup
+  tables cleared of 2026 regional data).
+
+To go back to in-season mode, work through the checklist in Section 12.
+
+---
+
 ## 12. Roadmap (genuinely open, not yet built)
 
-- **Worlds — the stages themselves.** The Worlds screen's Teams section
-  is built (see [The Worlds screen](#the-worlds-screen)); not built: the
-  Play-In bracket, the Swiss stage, the Knockout bracket, and real
-  Upcoming/Recent Games. All of them are waiting on real Worlds match
-  data to build against — same reasoning as every region's bracket.
+- **Real visual elimination bracket renderers for Play-Ins (single-elim
+  tree) and Playoffs (double-elim, separate Upper/Lower Bracket paths) —
+  confirmed genuinely different shapes from each other via real
+  screenshots, not just “more rounds” than Swiss.** Blocked on real
+  seeded data for each, not effort — the stage-detection and dynamic
+  naming that feeds into this is already built and correctly identifies
+  whichever stage is genuinely active. See
+  [The Bracket system](#8-the-bracket-system) for why.
+- **Worlds screen: DONE for 2026** (brackets for Play-Ins, Swiss and
+  Knockouts, qualified-teams list with auto-eliminated markers, champion
+  spotlight). Still open for 2027: re-add Upcoming/Recent Games when the
+  next Worlds begins, and replace `worldsChampion.ts` / the qualifier lists
+  with the new year's data.
+- **Re-enable in-season features when the new season starts:** the Team
+  screen's Record / Upcoming / Recent / VODs, and the Region screen's Recent
+  Games, Overall Standings and Bracket (components are kept, just not
+  rendered). Also: remove or update the season-end pop-up key
+  (`leagueBase.seasonEnd2026Seen`) and the off-season roster note.
+- **LCP 2027 format:** Riot announced all LCP teams start in domestic
+  leagues (PCS/VCS/LJL) with the best qualifying into the LCP; details are
+  TBD, so the LCP region screen may need a format note.
+- **Off-season data to finish:** coaches and substitutes are TBD for every
+  team; the OPT logo URL and the NS logo haven't been verified rendering
+  in-app.
 - **LPL's VOD gap has a possible community-sourced fallback**
   (Leaguepedia's Cargo API), genuinely built and confirmed working — but
   parked (`src/api/leaguepediaClient.ts`, not deleted) after its rate
