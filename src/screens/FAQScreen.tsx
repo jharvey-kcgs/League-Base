@@ -1,5 +1,5 @@
-import React from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import React, { useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
 import { AppText } from '../components/AppText';
 
@@ -44,24 +44,52 @@ const FAQS: Array<{ q: string; a: string }> = [
 
 export function FAQScreen() {
   const { colors } = useTheme();
+  // Only one answer is open at a time; tapping the open one closes it.
+  const [open, setOpen] = useState<number | null>(null);
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
-      {FAQS.map((item) => (
-        <View key={item.q} style={[styles.item, { borderBottomColor: colors.border }]}>
-          <AppText weight="bold" style={[styles.question, { color: colors.text }]}>
-            {item.q}
-          </AppText>
-          <AppText style={[styles.answer, { color: colors.textMuted }]}>{item.a}</AppText>
-        </View>
-      ))}
+    <ScrollView
+      style={[styles.container, { backgroundColor: colors.background }]}
+      contentContainerStyle={styles.content}
+    >
+      <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        {FAQS.map((item, i) => {
+          const expanded = open === i;
+          return (
+            <View
+              key={item.q}
+              style={i > 0 && { borderTopColor: colors.border, borderTopWidth: StyleSheet.hairlineWidth }}
+            >
+              <Pressable
+                onPress={() => setOpen(expanded ? null : i)}
+                style={styles.questionRow}
+                accessibilityRole="button"
+                accessibilityState={{ expanded }}
+              >
+                <AppText weight="bold" style={[styles.question, { color: colors.text }]}>
+                  {item.q}
+                </AppText>
+                <AppText style={[styles.chevron, { color: colors.textMuted }]}>
+                  {expanded ? '\u2212' : '+'}
+                </AppText>
+              </Pressable>
+              {expanded ? (
+                <AppText style={[styles.answer, { color: colors.textMuted }]}>{item.a}</AppText>
+              ) : null}
+            </View>
+          );
+        })}
+      </View>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 20 },
-  item: { paddingBottom: 16, marginBottom: 16, borderBottomWidth: StyleSheet.hairlineWidth },
-  question: { fontSize: 15, marginBottom: 6 },
-  answer: { fontSize: 13, lineHeight: 19 },
+  container: { flex: 1 },
+  content: { padding: 16, paddingBottom: 48 },
+  card: { borderWidth: StyleSheet.hairlineWidth, borderRadius: 12, overflow: 'hidden' },
+  questionRow: { flexDirection: 'row', alignItems: 'center', padding: 16 },
+  question: { flex: 1, fontSize: 15, paddingRight: 12 },
+  chevron: { fontSize: 22 },
+  answer: { fontSize: 13, lineHeight: 19, paddingHorizontal: 16, paddingBottom: 16 },
 });
